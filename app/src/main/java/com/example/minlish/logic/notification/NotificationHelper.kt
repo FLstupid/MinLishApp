@@ -19,8 +19,8 @@ class NotificationHelper(private val context: Context) {
 
     fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Study Reminders"
-            val descriptionText = "Notifications for daily vocabulary review"
+            val name = context.getString(R.string.notification_channel_name)
+            val descriptionText = context.getString(R.string.notification_channel_desc)
             val importance = NotificationManager.IMPORTANCE_DEFAULT
             val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
                 description = descriptionText
@@ -31,18 +31,21 @@ class NotificationHelper(private val context: Context) {
         }
     }
 
-    fun showReviewNotification(wordCount: Int) {
+    fun showReviewNotification(wordCount: Int, openLearnTab: Boolean = false) {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            if (openLearnTab) {
+                putExtra(MainActivity.EXTRA_OPEN_DESTINATION, "LEARN")
+            }
         }
         val pendingIntent: PendingIntent = PendingIntent.getActivity(
             context, 0, intent, PendingIntent.FLAG_IMMUTABLE
         )
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Replace with app icon later
-            .setContentTitle("Time to review!")
-            .setContentText("You have $wordCount words ready for review. Keep up the streak!")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(context.getString(R.string.notification_review_title))
+            .setContentText(context.getString(R.string.notification_review_body, wordCount))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
@@ -51,7 +54,7 @@ class NotificationHelper(private val context: Context) {
             try {
                 notify(NOTIFICATION_ID, builder.build())
             } catch (e: SecurityException) {
-                // Handle permission not granted
+                // Permission not granted
             }
         }
     }

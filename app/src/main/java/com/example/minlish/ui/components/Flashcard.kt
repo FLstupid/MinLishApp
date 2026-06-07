@@ -15,8 +15,12 @@ import androidx.compose.ui.unit.sp
 import com.example.minlish.data.model.Word
 
 @Composable
-fun Flashcard(word: Word, modifier: Modifier = Modifier) {
-    var rotated by remember { mutableStateOf(false) }
+fun Flashcard(
+    word: Word,
+    modifier: Modifier = Modifier,
+) {
+    var rotated by remember(word.id) { mutableStateOf(false) }
+
     val rotation by animateFloatAsState(
         targetValue = if (rotated) 180f else 0f,
         animationSpec = tween(durationMillis = 500),
@@ -26,7 +30,7 @@ fun Flashcard(word: Word, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(400.dp)
+            .height(280.dp)
             .graphicsLayer {
                 rotationY = rotation
                 cameraDistance = 12f * density

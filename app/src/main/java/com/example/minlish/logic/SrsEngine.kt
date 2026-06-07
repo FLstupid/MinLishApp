@@ -12,15 +12,19 @@ object SrsEngine {
     fun calculateNextReview(word: Word, quality: Int): Word {
         val newRepetitions: Int
         val newInterval: Int
-        var newEaseFactor: Double = word.easeFactor
+        var newEaseFactor: Double
 
         if (quality >= 3) { // Trả lời đúng (Hard, Good, Easy)
-            if (word.repetitions == 0) {
-                newInterval = 1
-            } else if (word.repetitions == 1) {
-                newInterval = 6
-            } else {
-                newInterval = (word.interval * word.easeFactor).toInt()
+            newInterval = when (word.repetitions) {
+                0 -> {
+                    1
+                }
+                1 -> {
+                    6
+                }
+                else -> {
+                    (word.interval * word.easeFactor).toInt()
+                }
             }
             newRepetitions = word.repetitions + 1
             
@@ -29,7 +33,7 @@ object SrsEngine {
         } else { // Trả lời sai (Again)
             newRepetitions = 0
             newInterval = 1
-            // Ease factor giữ nguyên hoặc giảm nhẹ nếu muốn
+            newEaseFactor = max(1.3, word.easeFactor - 0.2)
         }
 
         if (newEaseFactor < 1.3) newEaseFactor = 1.3

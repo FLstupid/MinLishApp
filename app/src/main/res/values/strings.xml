@@ -1,3 +1,181 @@
 <resources>
     <string name="app_name">MinLish</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Trang chủ</string>
+    <string name="nav_library">Thư viện</string>
+    <string name="nav_learn">Học</string>
+    <string name="nav_practice">Luyện tập</string>
+    <string name="nav_profile">Hồ sơ</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_tagline">Học từ vựng mỗi ngày</string>
+    <string name="dashboard_daily_progress">Tiến độ hôm nay</string>
+    <string name="dashboard_all_caught_up">Đã xong phần học mới!</string>
+    <string name="dashboard_new_review">Ôn %2$d · Học mới %1$d</string>
+    <string name="dashboard_start_learning">Bắt đầu học</string>
+    <string name="dashboard_add_words">Thêm từ</string>
+    <string name="stat_streak">Chuỗi ngày</string>
+    <string name="stat_learned">Đã nhớ (Ổn/Dễ)</string>
+    <string name="stat_learned_in_set">%1$d / %2$d trong bộ</string>
+    <string name="stat_accuracy">Tự đánh giá (ôn)</string>
+    <string name="stat_objective_accuracy">Kiểm tra (quiz)</string>
+    <string name="stat_level">Trình độ</string>
+    <string name="stat_days_suffix"> ngày</string>
+    <string name="view_analytics">Thống kê chi tiết</string>
+    <string name="analytics_title">Thống kê</string>
+    <string name="analytics_streak">Chuỗi ngày: %1$d ngày</string>
+    <string name="analytics_session_accuracy">Tự đánh giá (7 ngày): %1$d%%</string>
+    <string name="analytics_objective_accuracy">Kiểm tra (7 ngày): %1$d%%</string>
+    <string name="analytics_chart_objective_accuracy">Kiểm tra theo ngày (7 ngày)</string>
+    <string name="analytics_skill_level">Trình độ: %1$s</string>
+    <string name="analytics_chart_activity">Hoạt động học (7 ngày)</string>
+    <string name="analytics_chart_accuracy">Tự đánh giá theo ngày (7 ngày)</string>
+    <string name="skill_beginner">Mới bắt đầu</string>
+    <string name="skill_intermediate">Trung cấp</string>
+    <string name="skill_advanced">Nâng cao</string>
+
+    <!-- Learn -->
+    <string name="learn_mode_srs">Học &amp; ôn hôm nay</string>
+    <string name="learn_unique_progress">Từ %1$d / %2$d</string>
+    <string name="learn_card_progress">Thẻ %1$d / %2$d (gồm ôn lại)</string>
+    <string name="learn_tap_flip">Chạm thẻ để xem nghĩa</string>
+    <string name="learn_rate_prompt">Bạn nhớ từ này mức nào?</string>
+    <string name="srs_again">Lại</string>
+    <string name="srs_hard">Khó</string>
+    <string name="srs_good">Ổn</string>
+    <string name="srs_easy">Dễ</string>
+    <string name="learn_empty_no_words">Chưa có từ để học</string>
+    <string name="learn_empty_no_words_hint">Hãy thêm từ vào Thư viện để bắt đầu học.</string>
+    <string name="learn_empty_caught_up">Đã học hết từ mới hôm nay</string>
+    <string name="learn_empty_caught_up_hint">Bạn đã xong phần học theo mục tiêu ngày. Có thể học thêm từ mới từ kho từ, luyện ở tab Luyện tập, hoặc quay lại vào ngày mai.</string>
+    <string name="learn_study_more_batch">Học thêm (%1$d từ mới)</string>
+    <string name="dashboard_study_more_batch">Học thêm (%1$d từ)</string>
+    <string name="open_library">Mở Thư viện</string>
+    <string name="go_home">Về Trang chủ</string>
+    <string name="go_practice">Đi Luyện tập</string>
+
+    <!-- Practice -->
+    <string name="practice_title">Ôn tập (cập nhật lịch nhắc)</string>
+    <string name="practice_mode_flashcard">Thẻ</string>
+    <string name="practice_mode_quiz">Trắc nghiệm</string>
+    <string name="practice_mode_typing">Gõ từ</string>
+    <string name="practice_empty">Chưa có từ để luyện — hãy Học từ mới trước.</string>
+    <string name="practice_speak">Phát âm</string>
+    <string name="practice_flashcard_progress">%1$d / %2$d</string>
+    <string name="practice_prev_word">Từ trước</string>
+    <string name="practice_next_word">Từ sau</string>
+    <string name="practice_srs_schedule_hint">Đánh giá chỉ cập nhật lịch ôn — dùng mũi tên để đổi thẻ.</string>
+    <string name="tts_unavailable_init">Không khởi tạo được phát âm trên thiết bị.</string>
+    <string name="tts_unavailable_missing_data">Cần tải gói giọng tiếng Anh cho Text-to-speech.</string>
+    <string name="tts_install_action">Cài đặt</string>
+    <string name="tts_speak_failed">Không phát được tiếng Anh. Trong Cài đặt → Text-to-speech, tải giọng tiếng Anh (English).</string>
+    <string name="tts_volume_muted">Âm lượng media đang tắt — hãy bật âm lượng để nghe phát âm.</string>
+    <string name="practice_next">Tiếp</string>
+    <string name="quiz_preparing">Đang chuẩn bị câu hỏi…</string>
+    <string name="quiz_empty">Chưa có từ để làm trắc nghiệm.</string>
+    <string name="quiz_correct">Đúng!</string>
+    <string name="quiz_incorrect">Chưa đúng.</string>
+    <string name="quiz_next">Câu tiếp theo</string>
+    <string name="quiz_example">Ví dụ: %1$s</string>
+    <string name="typing_preparing">Đang chuẩn bị…</string>
+    <string name="typing_meaning_label">Nghĩa:</string>
+    <string name="typing_input_label">Gõ từ tiếng Anh</string>
+    <string name="typing_attempts_left">Còn %1$d lần thử</string>
+    <string name="typing_try_again">Chưa đúng, thử lại nhé.</string>
+    <string name="typing_out_of_attempts">Hết lượt. Đáp án: %1$s</string>
+    <string name="typing_check">Kiểm tra</string>
+
+    <!-- Library -->
+    <string name="library_starter_title">Bộ có sẵn</string>
+    <string name="library_starter_subtitle">Chọn bộ có sẵn để bắt đầu học ngay, không cần nhập từng từ.</string>
+    <string name="library_starter_installed">Đã cài</string>
+    <string name="library_starter_recommended">Đề xuất theo mục tiêu</string>
+    <string name="library_add_starter">Thêm vào thư viện</string>
+    <string name="library_your_sets">Bộ của bạn</string>
+    <string name="library_word_count">%1$d từ</string>
+    <string name="library_empty_custom_hint">Chưa có bộ tùy chỉnh — bạn có thể tạo bộ riêng hoặc cài bộ có sẵn ở trên.</string>
+    <string name="library_open">Mở</string>
+    <string name="library_edit">Sửa</string>
+    <string name="library_delete">Xóa</string>
+    <string name="library_create_set">Tạo bộ từ vựng</string>
+    <string name="library_create_set_title">Tạo bộ từ vựng</string>
+    <string name="library_edit_set_title">Sửa bộ từ vựng</string>
+    <string name="library_delete_set_title">Xóa bộ từ vựng?</string>
+    <string name="library_delete_set_message">Thao tác này sẽ xóa bộ (và các từ trong bộ) khỏi bộ nhớ máy.</string>
+    <string name="field_title">Tiêu đề</string>
+    <string name="field_description">Mô tả</string>
+    <string name="field_tags_csv">Thẻ (CSV)</string>
+    <string name="action_create">Tạo</string>
+    <string name="action_save">Lưu</string>
+    <string name="action_cancel">Hủy</string>
+    <string name="action_close">Đóng</string>
+    <string name="set_fallback_title">Bộ từ</string>
+
+    <!-- Set detail / words -->
+    <string name="word_add_title">Thêm từ mới</string>
+    <string name="field_word">Từ</string>
+    <string name="field_pronunciation">Phiên âm</string>
+    <string name="field_meaning">Nghĩa</string>
+    <string name="field_description_en">Mô tả (tiếng Anh)</string>
+    <string name="field_example">Ví dụ</string>
+    <string name="field_collocation">Cụm từ đi kèm</string>
+    <string name="field_related_words">Từ liên quan</string>
+    <string name="field_note">Ghi chú</string>
+    <string name="set_no_words">Chưa có từ nào.</string>
+    <string name="set_add_word">Thêm từ</string>
+    <string name="set_paste_csv">Dán CSV</string>
+    <string name="set_import_file">Nhập file</string>
+    <string name="set_export_csv">Xuất CSV</string>
+    <string name="set_export_xlsx">Xuất XLSX</string>
+    <string name="set_learn_now">Học ngay</string>
+    <string name="import_csv_title">Nhập CSV</string>
+    <string name="import_csv_help">Dán CSV. Có thể có hoặc không có dòng tiêu đề. Cột: word, meaning, pronunciation, descriptionEn, example, collocation, relatedWords, note.</string>
+    <string name="action_import">Nhập</string>
+    <string name="import_paste_empty">Chưa dán nội dung CSV.</string>
+    <string name="import_failed">Nhập thất bại hoặc file không hợp lệ.</string>
+    <string name="import_stats">Đã thêm %1$d, gộp %2$d, bỏ qua %3$d, lỗi %4$d</string>
+    <string name="export_csv_ok">Xuất CSV thành công.</string>
+    <string name="export_csv_fail">Xuất CSV thất bại.</string>
+    <string name="export_xlsx_ok">Xuất XLSX thành công.</string>
+    <string name="export_xlsx_fail">Xuất XLSX thất bại.</string>
+    <string name="share_csv">Chia sẻ CSV</string>
+    <string name="share_xlsx">Chia sẻ XLSX</string>
+    <string name="cd_delete_word">Xóa từ</string>
+
+    <!-- Checkpoint -->
+    <string name="checkpoint_title">Kiểm tra nhanh</string>
+    <string name="checkpoint_offer_title">Kiểm tra nhanh?</string>
+    <string name="checkpoint_offer_message">Làm khoảng 5 câu trắc nghiệm để đo mức nhớ từ (không dựa vào tự đánh giá).</string>
+    <string name="checkpoint_offer_start">Bắt đầu</string>
+    <string name="checkpoint_offer_skip">Bỏ qua</string>
+    <string name="checkpoint_start">Bắt đầu kiểm tra</string>
+    <string name="dashboard_checkpoint">Kiểm tra nhanh</string>
+    <string name="checkpoint_not_enough">Cần ít nhất 5 từ đã học trong bộ hiện tại.</string>
+    <string name="checkpoint_progress">Câu %1$d / %2$d</string>
+    <string name="checkpoint_finish">Xem kết quả</string>
+    <string name="checkpoint_result">Đúng %1$d / %2$d</string>
+    <string name="checkpoint_result_percent">Độ chính xác: %1$d%%</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Hồ sơ</string>
+    <string name="field_name">Tên</string>
+    <string name="field_goal">Mục tiêu</string>
+    <string name="field_goal_hint">Dùng để gợi ý bộ từ trong Thư viện.</string>
+    <string name="field_level">Trình độ</string>
+    <string name="field_daily_goal">Mục tiêu mỗi ngày</string>
+    <string name="field_hour">Giờ</string>
+    <string name="field_minute">Phút</string>
+    <string name="profile_save_settings">Lưu cài đặt</string>
+    <string name="profile_sign_out">Đăng xuất</string>
+    <string name="profile_notifications">Bật nhắc học</string>
+    <string name="profile_notifications_section">Thông báo</string>
+    <string name="profile_save_profile">Lưu hồ sơ</string>
+    <string name="profile_saving">Đang lưu…</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_name">Nhắc học từ vựng</string>
+    <string name="notification_channel_desc">Thông báo ôn từ vựng hàng ngày</string>
+    <string name="notification_review_title">Đến giờ ôn tập!</string>
+    <string name="notification_review_body">Bạn có %1$d từ cần ôn. Giữ chuỗi ngày nhé!</string>
 </resources>

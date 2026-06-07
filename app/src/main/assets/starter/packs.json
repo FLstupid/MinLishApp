@@ -1,0 +1,26 @@
+[
+  {
+    "id": "common_100",
+    "title": "100 từ thường gặp",
+    "description": "Từ vựng cơ bản để bắt đầu học ngay.",
+    "fileName": "common_100.csv",
+    "tags": "starter,beginner",
+    "autoInstall": true
+  },
+  {
+    "id": "ielts_starter",
+    "title": "IELTS Starter",
+    "description": "Từ học thuật thường gặp trong IELTS.",
+    "fileName": "ielts_starter.csv",
+    "tags": "starter,ielts",
+    "autoInstall": false
+  },
+  {
+    "id": "daily_communication",
+    "title": "Giao tiếp hằng ngày",
+    "description": "Cụm từ và từ dùng trong đời sống hàng ngày.",
+    "fileName": "daily_communication.csv",
+    "tags": "starter,daily",
+    "autoInstall": false
+  }
+]

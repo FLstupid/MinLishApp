@@ -1,15 +1,85 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# --- Built application files ---
+*.apk
+*.ap_
+*.aab
+
+# --- Android / ART ---
+*.dex
+*.class
+
+# --- Generated / build ---
+bin/
+gen/
+out/
+release/
+build/
+**/build/
+.gradle/
+.kotlin/
+
+# --- Gradle wrapper (keep jar; ignore local cache only via .gradle) ---
+
+# --- Local SDK & secrets (never commit) ---
 local.properties
+
+# --- Firebase / Google (download from Firebase Console — do NOT commit) ---
+**/google-services.json
+GoogleService-Info.plist
+**/serviceAccount*.json
+**/*firebase*adminsdk*.json
+firebase-debug.log
+firebase-debug.*.log
+ui-debug.log
+
+# Keep template for teammates (commit the .example only)
+!**/google-services.json.example
+
+# --- IntelliJ / Android Studio (machine-local — do not commit) ---
+*.iml
+.idea/
+
+# --- Cursor IDE (local rules, agent state — do not push to GitHub) ---
+.cursor/
+
+# --- Project docs (local / nộp riêng — không đẩy lên GitHub) ---
+docs/
+
+# --- Native / NDK ---
+.externalNativeBuild/
+.cxx/
+
+# --- Captures, logs ---
+/captures/
+*.log
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Keystore (signing) ---
+*.jks
+*.keystore
+
+# --- Firebase / Node (Cloud Functions) ---
+functions/node_modules/
+functions/.env
+functions/.env.*
+# Admin SDK key if stored under functions/
+functions/serviceAccount*.json
+
+# --- Fastlane (if added later) ---
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# --- Lint ---
+lint/intermediates/
+lint/generated/
+lint/outputs/
+lint/tmp/
+
+# --- Misc ---
+.navigation/
+*.swp
+*~

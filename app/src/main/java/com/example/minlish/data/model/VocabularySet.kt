@@ -7,8 +7,12 @@ import androidx.room.PrimaryKey
 data class VocabularySet(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val title: String,
+    val title: String = "",
     val description: String? = null,
     val tags: String = "", // Room doesn't support List out of the box, use CSV or TypeConverter
-    val wordCount: Int = 0
+    val wordCount: Int = 0,
+
+    // Metadata for future per-user support.
+    val createdAt: Long = System.currentTimeMillis(),
+    val userId: String = ""
 )

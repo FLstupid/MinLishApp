@@ -1,0 +1,41 @@
+﻿# Gradle & build outputs (indexing noise)
+.gradle/
+**/.gradle/
+**/build/
+build/
+out/
+.cxx/
+.externalNativeBuild/
+
+# IDE
+.idea/
+
+# Git
+.git/
+
+# Dependencies
+functions/node_modules/
+**/node_modules/
+
+# Local / secrets
+local.properties
+**/google-services.json
+GoogleService-Info.plist
+**/serviceAccount*.json
+**/*firebase*adminsdk*.json
+*.jks
+*.keystore
+functions/.env
+functions/.env.*
+
+# Large generated or binary assets
+*.apk
+*.aab
+*.dex
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cursor local project state (if present under repo)
+.cursor/

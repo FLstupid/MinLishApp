@@ -1,90 +1,304 @@
-package com.example.minlish
+﻿package com.example.minlish
 
 import android.Manifest
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.minlish.ui.components.Flashcard
+import com.example.minlish.R
+import com.example.minlish.ui.navigation.AppDestinations
+import com.example.minlish.ui.screen.AnalyticsScreen
+import com.example.minlish.ui.screen.AuthScreen
+import com.example.minlish.ui.screen.CheckpointScreen
+import com.example.minlish.ui.screen.DashboardScreen
+import com.example.minlish.ui.screen.LearnScreen
+import com.example.minlish.ui.screen.LibraryScreen
+import com.example.minlish.ui.screen.PracticeScreen
+import com.example.minlish.ui.screen.ProfileScreen
 import com.example.minlish.ui.theme.MinLishTheme
-import com.example.minlish.ui.viewmodel.LearnUiState
+import com.example.minlish.ui.viewmodel.AnalyticsViewModel
+import com.example.minlish.ui.viewmodel.AnalyticsViewModelFactory
+import com.example.minlish.ui.viewmodel.AuthViewModel
+import com.example.minlish.ui.viewmodel.AuthViewModelFactory
+import com.example.minlish.ui.viewmodel.CheckpointViewModel
+import com.example.minlish.ui.viewmodel.CheckpointViewModelFactory
+import com.example.minlish.ui.viewmodel.DashboardViewModel
+import com.example.minlish.ui.viewmodel.DashboardViewModelFactory
+import com.example.minlish.ui.viewmodel.PracticeViewModel
+import com.example.minlish.ui.viewmodel.PracticeViewModelFactory
+import com.example.minlish.ui.viewmodel.ProfileViewModel
+import com.example.minlish.ui.viewmodel.ProfileViewModelFactory
+import com.example.minlish.ui.viewmodel.SetViewModel
+import com.example.minlish.ui.viewmodel.SetViewModelFactory
 import com.example.minlish.ui.viewmodel.WordViewModel
 import com.example.minlish.ui.viewmodel.WordViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // KÃ­ch hoáº¡t hiá»ƒn thá»‹ trÃ n viá»n
         enableEdgeToEdge()
+
+        val initialDestination = when (intent.getStringExtra(EXTRA_OPEN_DESTINATION)) {
+            "LEARN" -> AppDestinations.LEARN
+            else -> AppDestinations.DASHBOARD
+        }
         setContent {
             MinLishTheme {
                 NotificationPermissionEffect()
-                MinLishApp()
+                MinLishRoot(initialDestination = initialDestination)
             }
         }
+    }
+
+    companion object {
+        const val EXTRA_OPEN_DESTINATION = "openDestination"
     }
 }
 
 @Composable
 fun NotificationPermissionEffect() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        val launcher = rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            // Handle result if needed
-        }
-        LaunchedEffect(Unit) {
-            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { _ -> }
+    LaunchedEffect(Unit) {
+        launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MinLishApp() {
+fun MinLishRoot(initialDestination: AppDestinations = AppDestinations.DASHBOARD) {
     val context = LocalContext.current
     val app = context.applicationContext as MinLishApplication
-    val viewModel: WordViewModel = viewModel(
-        factory = WordViewModelFactory(app.repository)
+
+    val webClientId = try {
+        // `default_web_client_id` Ä‘Æ°á»£c táº¡o bá»Ÿi google-services plugin (khÃ´ng pháº£i luÃ´n náº±m trong `R.string`).
+        val resId = context.resources.getIdentifier(
+            "default_web_client_id",
+            "string",
+            context.packageName,
+        )
+        if (resId != 0) context.getString(resId) else ""
+    } catch (_: Throwable) {
+        ""
+    }
+
+    val authViewModel: AuthViewModel = viewModel(
+        factory = AuthViewModelFactory(
+            firebaseAuth = app.firebaseAuth,
+            userRepository = app.userRepository,
+            vocabSetRepository = app.vocabSetRepository,
+        )
     )
 
-    var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.DASHBOARD) }
+    val currentUser by authViewModel.currentUser.collectAsState()
+
+    if (currentUser == null) {
+        AuthScreen(viewModel = authViewModel, webClientId = webClientId)
+        return
+    }
+
+    val wordViewModel: WordViewModel = viewModel(
+        factory = WordViewModelFactory(
+            app.repository,
+            app.vocabSetRepository,
+            app.studySessionRepository,
+            app.userPreferencesRepository,
+            app.ttsManager,
+        )
+    )
+
+    val setViewModel: SetViewModel = viewModel(
+        factory = SetViewModelFactory(
+            app.vocabSetRepository,
+            app.repository,
+            app.userPreferencesRepository,
+            app.starterPackInstaller,
+        )
+    )
+
+    val practiceViewModel: PracticeViewModel = viewModel(
+        factory = PracticeViewModelFactory(
+            app.repository,
+            app.vocabSetRepository,
+            app.userPreferencesRepository,
+            app.studySessionRepository,
+            app.ttsManager,
+        )
+    )
+
+    val analyticsViewModel: AnalyticsViewModel = viewModel(
+        factory = AnalyticsViewModelFactory(
+            app.studySessionRepository,
+            app.repository,
+            app.vocabSetRepository,
+            app.userPreferencesRepository
+        )
+    )
+
+    val checkpointViewModel: CheckpointViewModel = viewModel(
+        factory = CheckpointViewModelFactory(
+            app.repository,
+            app.vocabSetRepository,
+            app.userPreferencesRepository,
+            app.studySessionRepository,
+        )
+    )
+
+    val profileViewModel: ProfileViewModel = viewModel(
+        factory = ProfileViewModelFactory(app.userPreferencesRepository),
+    )
+    val dashboardViewModel: DashboardViewModel = viewModel(
+        factory = DashboardViewModelFactory(wordViewModel, analyticsViewModel),
+    )
+
+    MinLishTabs(
+        wordViewModel = wordViewModel,
+        authViewModel = authViewModel,
+        setViewModel = setViewModel,
+        practiceViewModel = practiceViewModel,
+        analyticsViewModel = analyticsViewModel,
+        checkpointViewModel = checkpointViewModel,
+        profileViewModel = profileViewModel,
+        dashboardViewModel = dashboardViewModel,
+        initialDestination = initialDestination,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MinLishTabs(
+    wordViewModel: WordViewModel,
+    authViewModel: AuthViewModel,
+    setViewModel: SetViewModel,
+    practiceViewModel: PracticeViewModel,
+    analyticsViewModel: AnalyticsViewModel,
+    checkpointViewModel: CheckpointViewModel,
+    profileViewModel: ProfileViewModel,
+    dashboardViewModel: DashboardViewModel,
+    initialDestination: AppDestinations = AppDestinations.DASHBOARD,
+) {
+    var currentDestination by rememberSaveable { mutableStateOf(initialDestination) }
+    var showAnalytics by rememberSaveable { mutableStateOf(false) }
+    var skipNextLearnRefresh by remember { mutableStateOf(false) }
+    var showCheckpoint by rememberSaveable { mutableStateOf(false) }
+    var checkpointAutoStart by rememberSaveable { mutableStateOf(false) }
+
+    val offerCheckpoint by wordViewModel.offerCheckpoint.collectAsState()
+
+    val analyticsUiState by analyticsViewModel.uiState.collectAsState()
+    val selectedSetId by setViewModel.selectedSetId.collectAsState()
+    val sets by setViewModel.sets.collectAsState()
+    val profile by authViewModel.profile.collectAsState()
+    val dailyGoal = profile?.dailyGoal ?: 10
+    val userLevel = profile?.level ?: "B1"
+
+    LaunchedEffect(dailyGoal) {
+        wordViewModel.setDailyGoal(dailyGoal)
+    }
+
+    LaunchedEffect(userLevel) {
+        wordViewModel.setUserLevel(userLevel)
+    }
+
+    LaunchedEffect(currentDestination) {
+        if (currentDestination == AppDestinations.LEARN) {
+            if (skipNextLearnRefresh) {
+                skipNextLearnRefresh = false
+            } else {
+                wordViewModel.refreshDailyQueueIfIdle()
+            }
+        }
+    }
+
+    if (offerCheckpoint) {
+        AlertDialog(
+            onDismissRequest = {
+                wordViewModel.consumeCheckpointOffer()
+            },
+            title = { Text(stringResource(R.string.checkpoint_offer_title)) },
+            text = { Text(stringResource(R.string.checkpoint_offer_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        wordViewModel.consumeCheckpointOffer()
+                        checkpointAutoStart = true
+                        showCheckpoint = true
+                    },
+                ) {
+                    Text(stringResource(R.string.checkpoint_offer_start))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { wordViewModel.consumeCheckpointOffer() }) {
+                    Text(stringResource(R.string.checkpoint_offer_skip))
+                }
+            },
+        )
+    }
+
+    val showSetDetail = currentDestination == AppDestinations.VOCABULARY && selectedSetId != null
+    val selectedSetTitle = if (selectedSetId != null) {
+        sets.firstOrNull { it.id == selectedSetId }?.title ?: stringResource(R.string.set_fallback_title)
+    } else {
+        ""
+    }
 
     NavigationSuiteScaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding() // TrÃ¡nh camera
+            .navigationBarsPadding(), // TrÃ¡nh thanh Ä‘iá»u hÆ°á»›ng dÆ°á»›i
         navigationSuiteItems = {
             AppDestinations.entries.forEach { destination ->
                 item(
                     icon = {
                         Icon(
-                            painter = painterResource(destination.icon),
-                            contentDescription = destination.label
+                            imageVector = destination.icon,
+                            contentDescription = stringResource(destination.labelRes),
+                            modifier = Modifier.size(24.dp)
                         )
                     },
-                    label = { Text(destination.label) },
+                    label = { Text(stringResource(destination.labelRes)) },
                     selected = destination == currentDestination,
-                    onClick = { currentDestination = destination }
+                    onClick = {
+                        currentDestination = destination
+                        showAnalytics = false
+                    }
                 )
             }
         }
@@ -92,22 +306,51 @@ fun MinLishApp() {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            text = currentDestination.label,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = Color.Unspecified,
-                        navigationIconContentColor = Color.Unspecified,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface,
-                        actionIconContentColor = Color.Unspecified
+                if (showSetDetail) {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            Text(
+                                text = selectedSetTitle,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(
+                                onClick = { setViewModel.clearSelection() },
+                            ) {
+                                Text("<", style = MaterialTheme.typography.titleMedium)
+                            }
+                        },
                     )
-                )
+                } else if (currentDestination == AppDestinations.DASHBOARD && showAnalytics) {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            Text(
+                                text = stringResource(R.string.analytics_title),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(
+                                onClick = { showAnalytics = false },
+                            ) {
+                                Text("<", style = MaterialTheme.typography.titleMedium)
+                            }
+                        },
+                    )
+                } else {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            Text(
+                                text = stringResource(currentDestination.labelRes),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    )
+                }
             }
         ) { innerPadding ->
             Box(
@@ -115,451 +358,90 @@ fun MinLishApp() {
                     .padding(innerPadding)
                     .fillMaxSize()
             ) {
-                when (currentDestination) {
-                    AppDestinations.DASHBOARD -> DashboardScreen(
-                        viewModel = viewModel,
-                        onStartLearning = { currentDestination = AppDestinations.LEARN }
+                if (showCheckpoint) {
+                    CheckpointScreen(
+                        viewModel = checkpointViewModel,
+                        autoStart = checkpointAutoStart,
+                        onClose = {
+                            showCheckpoint = false
+                            checkpointAutoStart = false
+                        },
+                        onOpenLibrary = {
+                            showCheckpoint = false
+                            checkpointAutoStart = false
+                            currentDestination = AppDestinations.VOCABULARY
+                        },
                     )
-                    AppDestinations.VOCABULARY -> LibraryScreen(viewModel)
-                    AppDestinations.LEARN -> LearnScreen(viewModel)
-                    AppDestinations.PROFILE -> ProfileScreen()
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun DashboardScreen(viewModel: WordViewModel, onStartLearning: () -> Unit) {
-    val reviewCount by viewModel.reviewCount.collectAsState()
-    val learnedCount by viewModel.learnedCount.collectAsState()
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "MinLish",
-                style = MaterialTheme.typography.displayMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = "Master your vocabulary every day",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-        }
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-            shape = MaterialTheme.shapes.extraLarge
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "Daily Progress",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Text(
-                    text = if (reviewCount > 0) "$reviewCount words to review" else "All caught up!",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Button(
-                    onClick = onStartLearning,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
-                    enabled = reviewCount > 0
-                ) {
-                    Text(
-                        text = if (reviewCount > 0) "Start Learning" else "Add More Words",
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            StatItem(label = "Streak", value = "1 day", modifier = Modifier.weight(1f))
-            StatItem(label = "Learned", value = "$learnedCount words", modifier = Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-fun StatItem(label: String, value: String, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        shape = MaterialTheme.shapes.large
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        }
-    }
-}
-
-@Composable
-fun LibraryScreen(viewModel: WordViewModel) {
-    var showAddDialog by remember { mutableStateOf(false) }
-    var showImportDialog by remember { mutableStateOf(false) }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OutlinedButton(
-                onClick = { showImportDialog = true },
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large
-            ) {
-                Icon(painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Import from CSV")
-            }
-
-            Surface(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                shape = MaterialTheme.shapes.large,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "Your word list will appear here.\nTap the + button to add a word.",
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        FloatingActionButton(
-            onClick = { showAddDialog = true },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(24.dp),
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            shape = MaterialTheme.shapes.large
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Word")
-        }
-    }
-
-    if (showAddDialog) {
-        AddWordDialog(
-            onDismiss = { showAddDialog = false },
-            onConfirm = { word, meaning, pron, ex ->
-                viewModel.addNewWord(word, meaning, pron, ex)
-                showAddDialog = false
-            }
-        )
-    }
-
-    if (showImportDialog) {
-        ImportCsvDialog(
-            onDismiss = { showImportDialog = false },
-            onConfirm = { csv ->
-                viewModel.importCsv(csv)
-                showImportDialog = false
-            }
-        )
-    }
-}
-
-@Composable
-fun AddWordDialog(onDismiss: () -> Unit, onConfirm: (String, String, String, String) -> Unit) {
-    var word by remember { mutableStateOf("") }
-    var meaning by remember { mutableStateOf("") }
-    var pronunciation by remember { mutableStateOf("") }
-    var example by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add New Word", fontWeight = FontWeight.Bold) },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedTextField(
-                    value = word,
-                    onValueChange = { word = it },
-                    label = { Text("Word") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
-                )
-                OutlinedTextField(
-                    value = meaning,
-                    onValueChange = { meaning = it },
-                    label = { Text("Meaning") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
-                )
-                OutlinedTextField(
-                    value = pronunciation,
-                    onValueChange = { pronunciation = it },
-                    label = { Text("Pronunciation") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
-                )
-                OutlinedTextField(
-                    value = example,
-                    onValueChange = { example = it },
-                    label = { Text("Example") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2,
-                    shape = MaterialTheme.shapes.medium
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { if (word.isNotBlank() && meaning.isNotBlank()) onConfirm(word, meaning, pronunciation, example) },
-                shape = MaterialTheme.shapes.large
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-fun ImportCsvDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
-    var csvText by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Import CSV", fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "Format: word, meaning, pronunciation, example",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                OutlinedTextField(
-                    value = csvText,
-                    onValueChange = { csvText = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    placeholder = { Text("Paste CSV content here...") },
-                    shape = MaterialTheme.shapes.medium
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { if (csvText.isNotBlank()) onConfirm(csvText) },
-                shape = MaterialTheme.shapes.large
-            ) {
-                Text("Import")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-fun LearnScreen(viewModel: WordViewModel) {
-    val uiState by viewModel.uiState.collectAsState()
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        when (val state = uiState) {
-            is LearnUiState.Loading -> {
-                CircularProgressIndicator()
-            }
-            is LearnUiState.Empty -> {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = "Great Job!",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "You've finished all your words for today.",
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Button(onClick = { viewModel.addDummyData() }) {
-                        Text("Add Sample Data")
-                    }
-                }
-            }
-            is LearnUiState.Success -> {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Learning Mode (SRS)",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.secondary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        LinearProgressIndicator(
-                            progress = { 0.5f }, // Placeholder for actual progress
-                            modifier = Modifier.fillMaxWidth().height(8.dp).padding(horizontal = 32.dp),
-                            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                        )
-                    }
-
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        key(state.word.id) {
-                            Flashcard(word = state.word)
+                } else when (currentDestination) {
+                    AppDestinations.DASHBOARD -> {
+                        if (showAnalytics) {
+                            AnalyticsScreen(uiState = analyticsUiState, showTitle = false)
+                        } else {
+                            DashboardScreen(
+                                viewModel = dashboardViewModel,
+                                onStartLearning = {
+                                    showAnalytics = false
+                                    currentDestination = AppDestinations.LEARN
+                                },
+                                onStartBonusLearning = {
+                                    showAnalytics = false
+                                    skipNextLearnRefresh = true
+                                    wordViewModel.startBonusSession()
+                                    currentDestination = AppDestinations.LEARN
+                                },
+                                onOpenLibrary = {
+                                    showAnalytics = false
+                                    currentDestination = AppDestinations.VOCABULARY
+                                },
+                                onOpenAnalytics = { showAnalytics = true },
+                                onOpenCheckpoint = {
+                                    checkpointAutoStart = false
+                                    showCheckpoint = true
+                                },
+                            )
                         }
                     }
-
-                    Column(
-                        modifier = Modifier.padding(top = 24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(
-                            text = "How well did you know this word?",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            SRSButton("Again", MaterialTheme.colorScheme.errorContainer) { viewModel.onAnswer(0) }
-                            SRSButton("Hard", MaterialTheme.colorScheme.secondaryContainer) { viewModel.onAnswer(3) }
-                            SRSButton("Good", MaterialTheme.colorScheme.primaryContainer) { viewModel.onAnswer(4) }
-                            SRSButton("Easy", MaterialTheme.colorScheme.tertiaryContainer) { viewModel.onAnswer(5) }
-                        }
-                    }
+                    AppDestinations.VOCABULARY -> LibraryScreen(
+                        setViewModel = setViewModel,
+                        profileGoal = profile?.goal.orEmpty(),
+                        onGoLearn = {
+                            showAnalytics = false
+                            currentDestination = AppDestinations.LEARN
+                        },
+                    )
+                    AppDestinations.LEARN -> LearnScreen(
+                        viewModel = wordViewModel,
+                        onOpenLibrary = {
+                            showAnalytics = false
+                            currentDestination = AppDestinations.VOCABULARY
+                        },
+                        onGoHome = {
+                            showAnalytics = false
+                            currentDestination = AppDestinations.DASHBOARD
+                        },
+                        onGoPractice = {
+                            showAnalytics = false
+                            currentDestination = AppDestinations.PRACTICE
+                        },
+                    )
+                    AppDestinations.PRACTICE -> PracticeScreen(
+                        viewModel = practiceViewModel,
+                        onOpenLibrary = {
+                            showAnalytics = false
+                            currentDestination = AppDestinations.VOCABULARY
+                        },
+                    )
+                    AppDestinations.PROFILE -> ProfileScreen(authViewModel, profileViewModel)
                 }
             }
         }
     }
-}
-
-@Composable
-fun RowScope.SRSButton(
-    label: String, 
-    containerColor: androidx.compose.ui.graphics.Color,
-    onClick: () -> Unit
-) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier.weight(1f),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = containerColor,
-            contentColor = contentColorFor(containerColor)
-        ),
-        contentPadding = PaddingValues(0.dp),
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-fun ProfileScreen() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Surface(
-            modifier = Modifier.size(120.dp),
-            shape = androidx.compose.foundation.shape.CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_account_box),
-                contentDescription = null,
-                modifier = Modifier.padding(24.dp),
-                tint = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        }
-        Text(
-            text = "User Profile",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = "Keep up the good work on your learning journey!",
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-enum class AppDestinations(
-    val label: String,
-    val icon: Int,
-) {
-    DASHBOARD("Home", R.drawable.ic_home),
-    VOCABULARY("Library", R.drawable.ic_favorite),
-    LEARN("Learn", R.drawable.ic_launcher_foreground),
-    PROFILE("Profile", R.drawable.ic_account_box),
 }
 
 @Preview(showBackground = true)
 @Composable
 fun MinLishAppPreview() {
     MinLishTheme {
-        MinLishApp()
+        MinLishRoot()
     }
 }
