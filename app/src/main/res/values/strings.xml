@@ -172,6 +172,12 @@
     <string name="profile_notifications_section">Thông báo</string>
     <string name="profile_save_profile">Lưu hồ sơ</string>
     <string name="profile_saving">Đang lưu…</string>
+    <string name="profile_saved_ok">Đã lưu hồ sơ.</string>
+    <string name="profile_notifications_saved">Đã lưu cài đặt. Nhắc hàng ngày lúc %1$d:%2$02d.</string>
+    <string name="profile_notifications_saved_off">Đã lưu cài đặt. Đã tắt nhắc học.</string>
+    <string name="library_set_created">Đã tạo bộ từ.</string>
+    <string name="library_set_updated">Đã cập nhật bộ từ.</string>
+    <string name="word_saved_ok">Đã thêm từ.</string>
 
     <!-- Notifications -->
     <string name="notification_channel_name">Nhắc học từ vựng</string>

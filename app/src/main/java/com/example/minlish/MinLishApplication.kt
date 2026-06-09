@@ -41,8 +41,8 @@ class MinLishApplication : Application() {
             firestore = firestore
         )
     }
-    val userRepository by lazy { UserRepository(firestore) }
     val studySessionRepository by lazy { StudySessionRepository(database.studySessionDao()) }
+    val userRepository by lazy { UserRepository(firestore) }
     val userPreferencesRepository by lazy { UserPreferencesRepository(this) }
     val ttsManager by lazy { TtsManager(applicationContext) }
     val starterPackInstaller by lazy {

@@ -7,6 +7,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.minlish.data.model.User
+import com.example.minlish.logic.CefrLevels
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -26,6 +28,12 @@ class UserPreferencesRepository(
     private val reminderMinuteKey = intPreferencesKey("reminder_minute")
     private val starterAutoInstalledKey = booleanPreferencesKey("starter_auto_installed")
     private val installedStarterPackIdsKey = stringPreferencesKey("installed_starter_pack_ids")
+
+    private val profileOwnerUidKey = stringPreferencesKey("profile_owner_uid")
+    private val profileNameKey = stringPreferencesKey("profile_name")
+    private val profileGoalKey = stringPreferencesKey("profile_goal")
+    private val profileLevelKey = stringPreferencesKey("profile_level")
+    private val profileDailyGoalKey = intPreferencesKey("profile_daily_goal")
 
     // Serialize daily-new counter operations to avoid lost increments when multiple coroutines fire.
     private val dailyNewCounterMutex = Mutex()
@@ -138,6 +146,40 @@ class UserPreferencesRepository(
                 editPrefs[dailyNewStudiedCountKey] = newCount
             }
             newCount
+        }
+    }
+
+    /** Local cache of profile fields; Firestore `users/{uid}` is synced from [AuthViewModel]. */
+    suspend fun loadProfileForUser(
+        uid: String,
+        email: String,
+        displayName: String,
+    ): User {
+        val prefs = context.minLishDataStore.data.first()
+        if (prefs[profileOwnerUidKey] != uid) {
+            return User(
+                uid = uid,
+                email = email,
+                name = displayName,
+            )
+        }
+        return User(
+            uid = uid,
+            email = email,
+            name = prefs[profileNameKey].orEmpty().ifBlank { displayName },
+            goal = prefs[profileGoalKey] ?: "IELTS",
+            level = CefrLevels.normalize(prefs[profileLevelKey] ?: "B1"),
+            dailyGoal = prefs[profileDailyGoalKey] ?: 10,
+        )
+    }
+
+    suspend fun saveProfile(profile: User) {
+        context.minLishDataStore.edit { prefs ->
+            prefs[profileOwnerUidKey] = profile.uid
+            prefs[profileNameKey] = profile.name
+            prefs[profileGoalKey] = profile.goal
+            prefs[profileLevelKey] = CefrLevels.normalize(profile.level)
+            prefs[profileDailyGoalKey] = profile.dailyGoal.coerceAtLeast(1)
         }
     }
 

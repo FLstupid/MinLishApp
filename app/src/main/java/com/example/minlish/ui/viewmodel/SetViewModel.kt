@@ -100,26 +100,20 @@ class SetViewModel(
         collocation: String?,
         relatedWords: String?,
         note: String?,
-        onResult: (Boolean) -> Unit = {},
     ) {
         viewModelScope.launch {
-            val setId = selectedSetId.value ?: run {
-                onResult(false)
-                return@launch
-            }
+            val setId = selectedSetId.value ?: return@launch
 
             val normalizedWord = word.trim()
             val normalizedMeaning = meaning.trim()
             if (normalizedWord.isBlank() || normalizedMeaning.isBlank()) {
                 _uiEvents.send(SetUiEvent.Snackbar("Vui lòng nhập từ và nghĩa."))
-                onResult(false)
                 return@launch
             }
 
             val alreadyExists = wordRepository.existsInSet(setId = setId, word = normalizedWord)
             if (alreadyExists) {
                 _uiEvents.send(SetUiEvent.Snackbar("Từ đã tồn tại trong bộ này."))
-                onResult(false)
                 return@launch
             }
 
@@ -134,9 +128,13 @@ class SetViewModel(
                 note = note?.trim().ifNullOrBlank { null },
                 setId = setId,
             )
-            wordRepository.insertWord(newWord)
-            vocabSetRepository.refreshWordCount(setId)
-            onResult(true)
+            try {
+                wordRepository.insertWord(newWord)
+                vocabSetRepository.refreshWordCount(setId)
+                _uiEvents.send(SetUiEvent.WordAdded)
+            } catch (_: Throwable) {
+                _uiEvents.send(SetUiEvent.Snackbar("Không thể lưu từ. Thử lại."))
+            }
         }
     }
 
@@ -187,7 +185,11 @@ class SetViewModel(
                 _uiEvents.send(SetUiEvent.ImportFailed)
                 return@launch
             }
-            val setId = selectedSetId.value ?: return@launch
+            val setId = selectedSetId.value
+            if (setId == null) {
+                _uiEvents.send(SetUiEvent.ImportFailed)
+                return@launch
+            }
             val stats = WordImportHelper.importRowsIntoSet(
                 wordRepository = wordRepository,
                 setId = setId,
@@ -243,6 +245,7 @@ sealed class SetUiEvent {
     data class ImportCompleted(val stats: SetViewModel.ImportStats, val showGoLearnCta: Boolean) : SetUiEvent()
     data object ImportFailed : SetUiEvent()
     data object PasteImportEmpty : SetUiEvent()
+    data object WordAdded : SetUiEvent()
 }
 
 class SetViewModelFactory(

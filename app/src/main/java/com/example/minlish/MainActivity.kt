@@ -121,6 +121,7 @@ fun MinLishRoot(initialDestination: AppDestinations = AppDestinations.DASHBOARD)
         factory = AuthViewModelFactory(
             firebaseAuth = app.firebaseAuth,
             userRepository = app.userRepository,
+            userPreferencesRepository = app.userPreferencesRepository,
             vocabSetRepository = app.vocabSetRepository,
         )
     )

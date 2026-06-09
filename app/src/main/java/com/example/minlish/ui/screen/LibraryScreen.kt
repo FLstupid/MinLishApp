@@ -9,7 +9,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -31,6 +35,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +47,7 @@ import com.example.minlish.R
 import com.example.minlish.data.model.VocabularySet
 import com.example.minlish.ui.viewmodel.SetUiEvent
 import com.example.minlish.ui.viewmodel.SetViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun LibraryScreen(
@@ -93,6 +99,7 @@ fun LibraryScreen(
     val starterPacks = setViewModel.starterPacks
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(setViewModel) {
         setViewModel.uiEvents.collect { event ->
@@ -113,6 +120,9 @@ fun LibraryScreen(
                     snackbarHostState.showSnackbar(context.getString(R.string.import_failed))
                 SetUiEvent.PasteImportEmpty ->
                     snackbarHostState.showSnackbar(context.getString(R.string.import_paste_empty))
+                SetUiEvent.WordAdded -> {
+                    // WordAdded is handled in SetDetailScreen; ignore here
+                }
             }
         }
     }
@@ -294,7 +304,15 @@ fun LibraryScreen(
             onDismissRequest = { showCreateSet = false },
             title = { Text(stringResource(R.string.library_create_set_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val scrollState = rememberScrollState()
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(scrollState)
+                        .imePadding(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     OutlinedTextField(
                         value = setTitle,
                         onValueChange = { setTitle = it },
@@ -329,6 +347,11 @@ fun LibraryScreen(
                         setTitle = ""
                         setDescription = ""
                         setTags = ""
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                context.getString(R.string.library_set_created),
+                            )
+                        }
                     },
                 ) {
                     Text(stringResource(R.string.action_create))
@@ -343,7 +366,15 @@ fun LibraryScreen(
             onDismissRequest = { showEditSet = false },
             title = { Text(stringResource(R.string.library_edit_set_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val scrollState = rememberScrollState()
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(scrollState)
+                        .imePadding(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     OutlinedTextField(
                         value = editTitle,
                         onValueChange = { editTitle = it },
@@ -378,6 +409,11 @@ fun LibraryScreen(
                             )
                         )
                         showEditSet = false
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                context.getString(R.string.library_set_updated),
+                            )
+                        }
                     },
                 ) {
                     Text(stringResource(R.string.action_save))

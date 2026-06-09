@@ -14,20 +14,20 @@ class UserRepository(
     suspend fun getUserProfile(uid: String): User? = withContext(Dispatchers.IO) {
         try {
             val snapshot = firestore.collection("users").document(uid).get().await()
-            snapshot.toObject<User>()
+            if (!snapshot.exists()) return@withContext null
+            snapshot.toObject<User>()?.copy(
+                uid = uid,
+                email = snapshot.getString("email").orEmpty(),
+            )
         } catch (_: Exception) {
             null
         }
     }
 
-    suspend fun upsertUserProfile(profile: User): Void? = withContext(Dispatchers.IO) {
-        firestore.collection("users").document(profile.uid).set(profile).await()
-    }
-
-    suspend fun mergeFcmToken(uid: String, token: String) = withContext(Dispatchers.IO) {
+    suspend fun upsertUserProfile(profile: User) = withContext(Dispatchers.IO) {
         firestore.collection("users")
-            .document(uid)
-            .set(mapOf("fcmToken" to token), SetOptions.merge())
+            .document(profile.uid)
+            .set(profile, SetOptions.merge())
             .await()
     }
 }

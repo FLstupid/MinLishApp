@@ -1,7 +1,7 @@
 package com.example.minlish.data.model
 
 /**
- * User profile stored in Firestore under: /users/{uid}
+ * User profile document: Firestore `users/{uid}` (merge). DataStore mirrors fields for offline use.
  */
 data class User(
     val uid: String = "",

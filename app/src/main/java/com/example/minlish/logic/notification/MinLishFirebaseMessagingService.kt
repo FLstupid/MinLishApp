@@ -7,38 +7,15 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.minlish.MainActivity
-import com.example.minlish.R
 import com.example.minlish.logic.notification.NotificationHelper.Companion.CHANNEL_ID
 import com.example.minlish.logic.notification.NotificationHelper.Companion.NOTIFICATION_ID
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
-import java.util.concurrent.atomic.AtomicBoolean
 
 class MinLishFirebaseMessagingService : FirebaseMessagingService() {
 
-    private val scope = CoroutineScope(Dispatchers.IO)
-    private val isTokenWriteInProgress = AtomicBoolean(false)
-
     override fun onNewToken(token: String) {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        if (!isTokenWriteInProgress.compareAndSet(false, true)) return
-
-        scope.launch {
-            try {
-                FirebaseFirestore.getInstance()
-                    .collection("users")
-                    .document(uid)
-                    .set(mapOf("fcmToken" to token), com.google.firebase.firestore.SetOptions.merge())
-            } finally {
-                isTokenWriteInProgress.set(false)
-            }
-        }
+        // FCM token refresh only; no Firestore. Use Firebase Console / backend topic sends if needed.
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
@@ -88,4 +65,3 @@ class MinLishFirebaseMessagingService : FirebaseMessagingService() {
         nm.createNotificationChannel(channel)
     }
 }
-

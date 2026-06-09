@@ -4,6 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -63,6 +65,8 @@ fun SetDetailScreen(
                     snackbarHostState.showSnackbar(context.getString(R.string.import_failed))
                 SetUiEvent.PasteImportEmpty ->
                     snackbarHostState.showSnackbar(context.getString(R.string.import_paste_empty))
+                SetUiEvent.WordAdded ->
+                    snackbarHostState.showSnackbar(context.getString(R.string.word_saved_ok))
             }
         }
     }
@@ -173,9 +177,7 @@ fun SetDetailScreen(
                     collocation = collocation,
                     relatedWords = relatedWords,
                     note = note,
-                ) { success ->
-                    if (success) showAdd = false
-                }
+                )
             },
         )
     }
@@ -185,7 +187,15 @@ fun SetDetailScreen(
             onDismissRequest = { showImport = false },
             title = { Text(stringResource(R.string.import_csv_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                val scrollState = rememberScrollState()
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(scrollState)
+                        .imePadding(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Text(stringResource(R.string.import_csv_help))
                     OutlinedTextField(
                         value = csvText,
@@ -198,6 +208,14 @@ fun SetDetailScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        if (csvText.isBlank()) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    context.getString(R.string.import_paste_empty),
+                                )
+                            }
+                            return@Button
+                        }
                         viewModel.importCsvText(csvText)
                         showImport = false
                         csvText = ""

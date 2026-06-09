@@ -75,8 +75,14 @@ class WordRepository(
             return existing.id
         }
         val insertedId = wordDao.insertWord(prepared)
-        val uid = firebaseAuth?.currentUser?.uid ?: return insertedId
-        pushWordToFirestore(uid, prepared.copy(id = insertedId))
+        val uid = firebaseAuth?.currentUser?.uid
+        if (uid != null) {
+            try {
+                pushWordToFirestore(uid, prepared.copy(id = insertedId))
+            } catch (e: Exception) {
+                Log.w(TAG, "Firestore sync failed after insert id=$insertedId", e)
+            }
+        }
         return insertedId
     }
 

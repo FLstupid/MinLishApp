@@ -4,19 +4,21 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.minlish.data.model.User
+import com.example.minlish.data.preferences.UserPreferencesRepository
 import com.example.minlish.data.repository.UserRepository
 import com.example.minlish.data.repository.VocabSetRepository
 import com.example.minlish.logic.CefrLevels
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -27,19 +29,27 @@ sealed class AuthUiState {
     data class Error(val message: String) : AuthUiState()
 }
 
+sealed class AuthOneTimeEvent {
+    data object ProfileSaved : AuthOneTimeEvent()
+    data class ProfileSaveError(val message: String) : AuthOneTimeEvent()
+}
+
 class AuthViewModel(
     private val firebaseAuth: FirebaseAuth,
     private val userRepository: UserRepository,
+    private val userPreferencesRepository: UserPreferencesRepository,
     private val vocabSetRepository: VocabSetRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
+    private val _oneTimeEvents = Channel<AuthOneTimeEvent>(Channel.BUFFERED)
+    val oneTimeEvents = _oneTimeEvents.receiveAsFlow()
+
     private val _profile = MutableStateFlow<User?>(null)
     val profile: StateFlow<User?> = _profile.asStateFlow()
 
-    // Modern way to observe auth state reactively
     val currentUser: StateFlow<FirebaseUser?> = callbackFlow {
         val listener = FirebaseAuth.AuthStateListener { auth ->
             trySend(auth.currentUser)
@@ -53,12 +63,10 @@ class AuthViewModel(
     )
 
     init {
-        // Automatically load profile whenever the current user changes
         viewModelScope.launch {
             currentUser.collect { user ->
                 if (user != null) {
-                    loadProfile(user.uid)
-                    registerFcmToken(user.uid)
+                    loadProfile(user)
                     viewModelScope.launch {
                         vocabSetRepository.deleteEmptyDefaultSets()
                     }
@@ -80,7 +88,6 @@ class AuthViewModel(
             _uiState.value = AuthUiState.Loading
             try {
                 firebaseAuth.signInWithEmailAndPassword(email, password).await()
-                // profile is handled by the collector in init
                 _uiState.value = AuthUiState.Idle
             } catch (t: Throwable) {
                 val message = when {
@@ -110,11 +117,11 @@ class AuthViewModel(
                 val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
                 val user = result.user
                 if (user != null) {
-                    userRepository.upsertUserProfile(
+                    ensureFirestoreProfile(
                         User(
                             uid = user.uid,
                             email = user.email.orEmpty(),
-                        )
+                        ),
                     )
                 }
                 _uiState.value = AuthUiState.Idle
@@ -154,13 +161,29 @@ class AuthViewModel(
 
     fun updateProfile(updated: User) {
         viewModelScope.launch {
+            val firebaseUser = firebaseAuth.currentUser
+            val uid = updated.uid.takeIf { it.isNotBlank() } ?: firebaseUser?.uid
+            if (uid.isNullOrBlank()) {
+                val msg = "Chưa đăng nhập — không thể lưu hồ sơ."
+                _oneTimeEvents.send(AuthOneTimeEvent.ProfileSaveError(msg))
+                return@launch
+            }
+            val toSave = updated.copy(
+                uid = uid,
+                email = updated.email.ifBlank { firebaseUser?.email.orEmpty() },
+                level = CefrLevels.normalize(updated.level),
+            )
             _uiState.value = AuthUiState.Loading
             try {
-                userRepository.upsertUserProfile(updated)
-                _profile.value = updated
+                userPreferencesRepository.saveProfile(toSave)
+                userRepository.upsertUserProfile(toSave)
+                _profile.value = toSave
                 _uiState.value = AuthUiState.Idle
+                _oneTimeEvents.send(AuthOneTimeEvent.ProfileSaved)
             } catch (t: Throwable) {
-                _uiState.value = AuthUiState.Error(t.message ?: "Cập nhật hồ sơ thất bại.")
+                val msg = t.message?.takeIf { it.isNotBlank() } ?: "Cập nhật hồ sơ thất bại."
+                _uiState.value = AuthUiState.Error(msg)
+                _oneTimeEvents.send(AuthOneTimeEvent.ProfileSaveError(msg))
             }
         }
     }
@@ -169,39 +192,55 @@ class AuthViewModel(
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         val result = firebaseAuth.signInWithCredential(credential).await()
         val user = result.user
-        if (user != null) {
-            val existingProfile = userRepository.getUserProfile(user.uid)
-            if (existingProfile == null) {
-                userRepository.upsertUserProfile(
-                    User(
-                        uid = user.uid,
-                        email = user.email.orEmpty(),
-                        name = user.displayName.orEmpty(),
-                    )
-                )
-            }
+        if (user != null && userRepository.getUserProfile(user.uid) == null) {
+            ensureFirestoreProfile(
+                User(
+                    uid = user.uid,
+                    email = user.email.orEmpty(),
+                    name = user.displayName.orEmpty(),
+                ),
+            )
         }
         _uiState.value = AuthUiState.Idle
     }
 
-    private fun registerFcmToken(uid: String) {
-        viewModelScope.launch {
-            try {
-                val token = FirebaseMessaging.getInstance().token.await()
-                userRepository.mergeFcmToken(uid, token)
-            } catch (_: Throwable) {
-                // Best-effort; onNewToken will retry when refreshed.
-            }
+    private suspend fun ensureFirestoreProfile(profile: User) {
+        try {
+            userRepository.upsertUserProfile(profile)
+            userPreferencesRepository.saveProfile(profile)
+        } catch (_: Throwable) {
+            // Best-effort on first sign-in; user can save again from Profile tab.
         }
     }
 
-    private fun loadProfile(uid: String) {
+    private fun loadProfile(firebaseUser: FirebaseUser) {
         viewModelScope.launch {
+            val email = firebaseUser.email.orEmpty()
+            val displayName = firebaseUser.displayName.orEmpty()
+            val uid = firebaseUser.uid
             try {
-                val raw = userRepository.getUserProfile(uid)
-                _profile.value = raw?.copy(level = CefrLevels.normalize(raw.level))
+                val local = userPreferencesRepository.loadProfileForUser(
+                    uid = uid,
+                    email = email,
+                    displayName = displayName,
+                )
+                val remote = userRepository.getUserProfile(uid)
+                val merged = when {
+                    remote != null -> remote.copy(
+                        uid = uid,
+                        email = remote.email.ifBlank { email },
+                        level = CefrLevels.normalize(remote.level),
+                    )
+                    else -> local
+                }
+                userPreferencesRepository.saveProfile(merged)
+                _profile.value = merged
             } catch (_: Throwable) {
-                _profile.value = null
+                _profile.value = User(
+                    uid = uid,
+                    email = email,
+                    name = displayName,
+                )
             }
         }
     }
@@ -210,6 +249,7 @@ class AuthViewModel(
 class AuthViewModelFactory(
     private val firebaseAuth: FirebaseAuth,
     private val userRepository: UserRepository,
+    private val userPreferencesRepository: UserPreferencesRepository,
     private val vocabSetRepository: VocabSetRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -218,6 +258,7 @@ class AuthViewModelFactory(
             return AuthViewModel(
                 firebaseAuth = firebaseAuth,
                 userRepository = userRepository,
+                userPreferencesRepository = userPreferencesRepository,
                 vocabSetRepository = vocabSetRepository,
             ) as T
         }
