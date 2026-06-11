@@ -16,9 +16,24 @@
 -keep class com.google.firebase.** { *; }
 -keep class com.google.android.gms.** { *; }
 
-# Apache POI
+# Apache POI and its dependencies
 -dontwarn org.apache.poi.**
+-dontwarn org.apache.xmlbeans.**
+-dontwarn org.apache.commons.compress.**
+-dontwarn com.github.luben.zstd.**
+-dontwarn com.graphbuilder.**
+-dontwarn net.sf.saxon.**
+-dontwarn javax.xml.stream.**
+-dontwarn java.awt.**
+-dontwarn org.apache.poi.xslf.draw.**
+
 -keep class org.apache.poi.** { *; }
+-keep class org.apache.xmlbeans.** { *; }
+-keep class org.apache.commons.compress.** { *; }
+
+# Apache POI transitive deps (log4j references bnd annotations not needed on Android)
+-dontwarn org.apache.logging.log4j.**
+-dontwarn aQute.bnd.annotation.**
 
 # Google Credentials / Auth
 -keep class com.google.android.libraries.identity.googleid.** { *; }
