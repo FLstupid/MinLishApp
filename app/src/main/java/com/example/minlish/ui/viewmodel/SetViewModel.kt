@@ -81,7 +81,16 @@ class SetViewModel(
 
     fun deleteSet(set: VocabularySet) {
         viewModelScope.launch {
+            val wasActive = userPreferencesRepository.activeSetId.first() == set.id
             vocabSetRepository.deleteSet(set)
+            if (wasActive) {
+                val remaining = vocabSetRepository.getAllSets().first()
+                val newActiveId = remaining.firstOrNull()?.id ?: 0L
+                userPreferencesRepository.setActiveSetId(newActiveId)
+                if (_selectedSetId.value == set.id) {
+                    _selectedSetId.value = null
+                }
+            }
         }
     }
 
@@ -195,6 +204,7 @@ class SetViewModel(
                 setId = setId,
                 rows = rows,
             )
+            vocabSetRepository.refreshWordCount(setId)
             val importStats = ImportStats(
                 total = stats.total,
                 inserted = stats.inserted,

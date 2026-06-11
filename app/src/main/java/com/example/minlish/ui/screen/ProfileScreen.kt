@@ -1,5 +1,13 @@
 package com.example.minlish.ui.screen
 
+import android.app.AlarmManager
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +37,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.minlish.R
 import com.example.minlish.data.model.User
+import com.example.minlish.logic.CefrLevels
 import com.example.minlish.ui.viewmodel.AuthOneTimeEvent
 import com.example.minlish.ui.viewmodel.AuthUiState
 import com.example.minlish.ui.viewmodel.AuthViewModel
@@ -69,16 +79,36 @@ fun ProfileScreen(
     var hourText by rememberSaveable { mutableStateOf(notificationSettings.reminderHour.toString()) }
     var minuteText by rememberSaveable { mutableStateOf(notificationSettings.reminderMinute.toString()) }
 
+    var hasNotificationPermission by remember {
+        mutableStateOf(checkNotificationPermission(context))
+    }
+    var canScheduleExact by remember {
+        mutableStateOf(checkExactAlarmPermission(context))
+    }
+
+    val notifPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        hasNotificationPermission = granted
+    }
+
     LaunchedEffect(notificationSettings) {
         enabledText = notificationSettings.notificationsEnabled
         hourText = notificationSettings.reminderHour.toString()
         minuteText = notificationSettings.reminderMinute.toString()
     }
 
+    LaunchedEffect(Unit) {
+        canScheduleExact = checkExactAlarmPermission(context)
+    }
+
     LaunchedEffect(profileViewModel) {
         profileViewModel.events.collect { event ->
             when (event) {
                 is ProfileUiEvent.NotificationSettingsSaved -> {
+                    hasNotificationPermission = checkNotificationPermission(context)
+                    canScheduleExact = checkExactAlarmPermission(context)
+
                     val message = if (event.enabled) {
                         context.getString(
                             R.string.profile_notifications_saved,
@@ -148,7 +178,7 @@ fun ProfileScreen(
 
             var name by rememberSaveable { mutableStateOf(profile?.name.orEmpty()) }
             val goalOptions = listOf("IELTS", "Communication", "Business", "Travel", "Other")
-            val levelOptions = listOf("A1", "A2", "B1", "B2", "C1", "C2")
+            val levelOptions = CefrLevels.ORDERED
 
             var goal by rememberSaveable { mutableStateOf(profile?.goal.orEmpty()) }
             var level by rememberSaveable { mutableStateOf(profile?.level.orEmpty()) }
@@ -159,9 +189,9 @@ fun ProfileScreen(
 
             LaunchedEffect(profile) {
                 name = profile?.name.orEmpty()
-                val normalizedGoal = profile?.goal.orEmpty().takeIf { it in goalOptions } ?: "IELTS"
+                val normalizedGoal = profile?.goal.orEmpty().takeIf { it in goalOptions } ?: CefrLevels.DEFAULT_GOAL
                 val normalizedLevel = profile?.level.orEmpty()
-                    .takeIf { it in levelOptions } ?: "B1"
+                    .takeIf { it in levelOptions } ?: CefrLevels.DEFAULT_LEVEL
                 goal = normalizedGoal
                 level = normalizedLevel
                 dailyGoalText = profile?.dailyGoal?.toString().orEmpty()
@@ -266,9 +296,38 @@ fun ProfileScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(stringResource(R.string.profile_notifications))
-                androidx.compose.material3.Switch(
+                Switch(
                     checked = enabledText,
-                    onCheckedChange = { enabledText = it },
+                    onCheckedChange = { newValue ->
+                        if (newValue && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
+                            notifPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            enabledText = newValue
+                        }
+                    },
+                )
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
+                PermissionWarningCard(
+                    message = stringResource(R.string.profile_notification_permission_missing),
+                    buttonText = stringResource(R.string.profile_notification_permission_grant),
+                    onClick = {
+                        notifPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    },
+                )
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !canScheduleExact) {
+                PermissionWarningCard(
+                    message = stringResource(R.string.profile_exact_alarm_permission_missing),
+                    buttonText = stringResource(R.string.profile_exact_alarm_permission_grant),
+                    onClick = {
+                        val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    },
                 )
             }
 
@@ -314,8 +373,8 @@ fun ProfileScreen(
                             name = name.trim(),
                             email = profile?.email?.takeIf { it.isNotBlank() }
                                 ?: currentUser?.email.orEmpty(),
-                            goal = goal.trim().ifBlank { "IELTS" },
-                            level = level.trim().ifBlank { "B1" },
+                            goal = goal.trim().ifBlank { CefrLevels.DEFAULT_GOAL },
+                            level = level.trim().ifBlank { CefrLevels.DEFAULT_LEVEL },
                             dailyGoal = dailyGoal,
                         ),
                     )
@@ -339,6 +398,49 @@ fun ProfileScreen(
             ) {
                 Text(stringResource(R.string.profile_sign_out))
             }
+        }
+    }
+}
+
+private fun checkNotificationPermission(context: Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+    val app = context.applicationContext
+    return app.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
+        android.content.pm.PackageManager.PERMISSION_GRANTED
+}
+
+private fun checkExactAlarmPermission(context: Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
+    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    return alarmManager.canScheduleExactAlarms()
+}
+
+@Composable
+private fun PermissionWarningCard(
+    message: String,
+    buttonText: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.errorContainer,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Text(
+                text = buttonText,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable(onClick = onClick),
+            )
         }
     }
 }

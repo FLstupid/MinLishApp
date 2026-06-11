@@ -9,10 +9,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.minlish.R
 import com.example.minlish.logic.auth.GoogleIdTokenProvider
 import com.example.minlish.ui.viewmodel.AuthUiState
 import com.example.minlish.ui.viewmodel.AuthViewModel
@@ -43,14 +45,14 @@ fun AuthScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "MinLish",
+            text = stringResource(R.string.app_name),
             style = MaterialTheme.typography.displayMedium,
             fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.primary
         )
 
         Text(
-            text = if (isSignUp) "Tạo tài khoản mới" else "Chào mừng trở lại",
+            text = if (isSignUp) stringResource(R.string.auth_create_account) else stringResource(R.string.auth_welcome_back),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 8.dp, bottom = 32.dp)
@@ -60,7 +62,7 @@ fun AuthScreen(
             value = email,
             onValueChange = { email = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Email") },
+            label = { Text(stringResource(R.string.auth_email_label)) },
             singleLine = true,
             shape = MaterialTheme.shapes.large
         )
@@ -71,7 +73,7 @@ fun AuthScreen(
             value = password,
             onValueChange = { password = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Mật khẩu") },
+            label = { Text(stringResource(R.string.auth_password_label)) },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             shape = MaterialTheme.shapes.large
@@ -104,14 +106,19 @@ fun AuthScreen(
             },
             shape = MaterialTheme.shapes.large,
         ) {
-            Text(if (isSignUp) "Đăng ký" else "Đăng nhập", style = MaterialTheme.typography.titleMedium)
+            Text(
+                if (isSignUp) stringResource(R.string.auth_sign_up) else stringResource(R.string.auth_sign_in),
+                style = MaterialTheme.typography.titleMedium,
+            )
         }
 
         TextButton(
             onClick = { isSignUp = !isSignUp },
             modifier = Modifier.padding(top = 8.dp)
         ) {
-            Text(if (isSignUp) "Đã có tài khoản? Đăng nhập ngay" else "Chưa có tài khoản? Đăng ký ngay")
+            Text(
+                if (isSignUp) stringResource(R.string.auth_has_account) else stringResource(R.string.auth_no_account),
+            )
         }
 
         Spacer(Modifier.height(24.dp))
@@ -119,7 +126,7 @@ fun AuthScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             HorizontalDivider(modifier = Modifier.weight(1f))
             Text(
-                text = "HOẶC",
+                text = stringResource(R.string.auth_or_divider),
                 modifier = Modifier.padding(horizontal = 16.dp),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -137,7 +144,8 @@ fun AuthScreen(
                         onSuccess = { viewModel.signInWithGoogleIdToken(it) },
                         onFailure = { e ->
                             viewModel.onGoogleSignInFailed(
-                                e.message?.takeIf { it.isNotBlank() } ?: "Đăng nhập Google thất bại.",
+                                e.message?.takeIf { it.isNotBlank() }
+                                    ?: context.getString(R.string.auth_google_sign_in_failed),
                             )
                         },
                     )
@@ -146,7 +154,7 @@ fun AuthScreen(
             enabled = uiState !is AuthUiState.Loading,
             shape = MaterialTheme.shapes.large,
         ) {
-            Text("Tiếp tục với Google", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.auth_continue_with_google), style = MaterialTheme.typography.titleMedium)
         }
 
         Spacer(Modifier.height(24.dp))

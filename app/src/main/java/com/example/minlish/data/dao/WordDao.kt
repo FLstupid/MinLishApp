@@ -97,6 +97,10 @@ interface WordDao {
     @Query("SELECT COUNT(*) FROM words WHERE setId = :setId AND repetitions > 0")
     fun getLearnedCountForSet(setId: Long): Flow<Int>
 
+    /** Words that have been studied at least once in a specific set (for Checkpoint). */
+    @Query("SELECT * FROM words WHERE setId = :setId AND lastReviewed IS NOT NULL")
+    suspend fun getStudiedWordsBySet(setId: Long): List<Word>
+
     @Query("DELETE FROM words WHERE setId = :setId")
     suspend fun deleteWordsBySetId(setId: Long)
 

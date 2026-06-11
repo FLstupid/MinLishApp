@@ -60,8 +60,7 @@ class CheckpointViewModel(
             val activeSetId = userPreferencesRepository.activeSetId.first()
             val setId =
                 if (activeSetId > 0L) activeSetId else vocabSetRepository.getOrCreateDefaultSetId()
-            pool = wordRepository.getWordsBySet(setId).first()
-                .filter { it.lastReviewed != null }
+            pool = wordRepository.getStudiedWordsBySet(setId)
 
             val studied = pool.shuffled()
             if (studied.size < MIN_STUDIED_WORDS) {

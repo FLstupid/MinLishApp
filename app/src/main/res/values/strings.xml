@@ -56,21 +56,16 @@
     <string name="go_practice">Đi Luyện tập</string>
 
     <!-- Practice -->
+    <string name="practice_set_label">Bộ từ:</string>
     <string name="practice_title">Ôn tập (cập nhật lịch nhắc)</string>
     <string name="practice_mode_flashcard">Thẻ</string>
     <string name="practice_mode_quiz">Trắc nghiệm</string>
     <string name="practice_mode_typing">Gõ từ</string>
     <string name="practice_empty">Chưa có từ để luyện — hãy Học từ mới trước.</string>
-    <string name="practice_speak">Phát âm</string>
     <string name="practice_flashcard_progress">%1$d / %2$d</string>
     <string name="practice_prev_word">Từ trước</string>
     <string name="practice_next_word">Từ sau</string>
     <string name="practice_srs_schedule_hint">Đánh giá chỉ cập nhật lịch ôn — dùng mũi tên để đổi thẻ.</string>
-    <string name="tts_unavailable_init">Không khởi tạo được phát âm trên thiết bị.</string>
-    <string name="tts_unavailable_missing_data">Cần tải gói giọng tiếng Anh cho Text-to-speech.</string>
-    <string name="tts_install_action">Cài đặt</string>
-    <string name="tts_speak_failed">Không phát được tiếng Anh. Trong Cài đặt → Text-to-speech, tải giọng tiếng Anh (English).</string>
-    <string name="tts_volume_muted">Âm lượng media đang tắt — hãy bật âm lượng để nghe phát âm.</string>
     <string name="practice_next">Tiếp</string>
     <string name="quiz_preparing">Đang chuẩn bị câu hỏi…</string>
     <string name="quiz_empty">Chưa có từ để làm trắc nghiệm.</string>
@@ -175,9 +170,35 @@
     <string name="profile_saved_ok">Đã lưu hồ sơ.</string>
     <string name="profile_notifications_saved">Đã lưu cài đặt. Nhắc hàng ngày lúc %1$d:%2$02d.</string>
     <string name="profile_notifications_saved_off">Đã lưu cài đặt. Đã tắt nhắc học.</string>
+    <string name="profile_notification_permission_missing">Cần cấp quyền thông báo để nhận nhắc học.</string>
+    <string name="profile_notification_permission_grant">Cấp quyền thông báo</string>
+    <string name="profile_exact_alarm_permission_missing">Cần cấp quyền đặt báo thức chính xác để nhắc đúng giờ.</string>
+    <string name="profile_exact_alarm_permission_grant">Mở cài đặt quyền</string>
     <string name="library_set_created">Đã tạo bộ từ.</string>
     <string name="library_set_updated">Đã cập nhật bộ từ.</string>
     <string name="word_saved_ok">Đã thêm từ.</string>
+
+    <!-- Auth -->
+    <string name="auth_welcome_back">Chào mừng trở lại</string>
+    <string name="auth_create_account">Tạo tài khoản mới</string>
+    <string name="auth_email_label">Email</string>
+    <string name="auth_password_label">Mật khẩu</string>
+    <string name="auth_sign_up">Đăng ký</string>
+    <string name="auth_sign_in">Đăng nhập</string>
+    <string name="auth_has_account">Đã có tài khoản? Đăng nhập ngay</string>
+    <string name="auth_no_account">Chưa có tài khoản? Đăng ký ngay</string>
+    <string name="auth_or_divider">HOẶC</string>
+    <string name="auth_google_sign_in_failed">Đăng nhập Google thất bại.</string>
+    <string name="auth_continue_with_google">Tiếp tục với Google</string>
+
+    <!-- Add word -->
+    <string name="add_word_validation_error">Vui lòng nhập từ và nghĩa.</string>
+
+    <!-- Default set -->
+    <string name="default_set_title">Bộ từ của tôi</string>
+
+    <!-- Misc -->
+    <string name="cd_add">Thêm</string>
 
     <!-- Notifications -->
     <string name="notification_channel_name">Nhắc học từ vựng</string>

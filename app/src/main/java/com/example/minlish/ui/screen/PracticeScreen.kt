@@ -15,10 +15,16 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -38,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.minlish.R
 import com.example.minlish.ui.components.Flashcard
-import com.example.minlish.ui.components.TtsUnavailableSnackbarEffect
 import com.example.minlish.ui.viewmodel.PracticeViewModel
 
 enum class PracticeMode { Flashcard, Quiz, Typing }
@@ -80,6 +85,7 @@ fun PracticeScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FlashcardPractice(
     viewModel: PracticeViewModel,
@@ -90,7 +96,11 @@ private fun FlashcardPractice(
     val snackbarHostState = remember { SnackbarHostState() }
     val flashcard by viewModel.flashcardUiState.collectAsState()
 
-    TtsUnavailableSnackbarEffect(viewModel.uiEvents, snackbarHostState)
+    // Set selector state
+    val availableSets by viewModel.availableSets.collectAsState()
+    val selectedSetId by viewModel.selectedSetId.collectAsState()
+    val currentSetName by viewModel.currentSetName.collectAsState()
+    var setDropdownExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -100,6 +110,48 @@ private fun FlashcardPractice(
             verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            // ── Set selector dropdown ──
+            ExposedDropdownMenuBox(
+                expanded = setDropdownExpanded,
+                onExpandedChange = { setDropdownExpanded = it },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                OutlinedTextField(
+                    value = currentSetName ?: "",
+                    onValueChange = { },
+                    modifier = Modifier
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                        .fillMaxWidth(),
+                    label = { Text(stringResource(R.string.practice_set_label)) },
+                    readOnly = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = setDropdownExpanded) },
+                    singleLine = true,
+                )
+                ExposedDropdownMenu(
+                    expanded = setDropdownExpanded,
+                    onDismissRequest = { setDropdownExpanded = false },
+                ) {
+                    availableSets.forEach { set ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = set.title,
+                                    color = if (set.id == selectedSetId) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                )
+                            },
+                            onClick = {
+                                viewModel.switchPracticeSet(set.id)
+                                setDropdownExpanded = false
+                            },
+                        )
+                    }
+                }
+            }
+
             Text(
                 text = stringResource(R.string.practice_title),
                 style = MaterialTheme.typography.titleMedium,
@@ -118,7 +170,7 @@ private fun FlashcardPractice(
                     Text(stringResource(R.string.open_library))
                 }
             } else {
-                val word = flashcard.word!!
+                val word = flashcard.word ?: return@Column
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -159,22 +211,6 @@ private fun FlashcardPractice(
                 Flashcard(
                     word = word,
                 )
-
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(
-                        onClick = { viewModel.onSpeakFlashcardClicked() },
-                        enabled = flashcard.speakEnabled,
-                    ) {
-                        if (flashcard.speakLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
-                            )
-                        } else {
-                            Text(stringResource(R.string.practice_speak))
-                        }
-                    }
-                }
 
                 if (flashcard.isReviewSaving) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)

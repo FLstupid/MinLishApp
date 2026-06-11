@@ -2,9 +2,9 @@ package com.example.minlish.logic
 
 import com.example.minlish.data.model.StudySession
 import com.example.minlish.data.repository.StudySessionRepository
+import com.example.minlish.logic.startOfDayMs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import java.util.Calendar
 
 /**
  * Accumulates study activity and persists a [StudySession] when flushed.
@@ -64,15 +64,5 @@ class StudySessionRecorder(
             objectiveReviewed = 0
             objectiveCorrect = 0
         }
-    }
-
-    private fun startOfDayMs(epochMs: Long): Long {
-        val cal = Calendar.getInstance()
-        cal.timeInMillis = epochMs
-        cal.set(Calendar.HOUR_OF_DAY, 0)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        return cal.timeInMillis
     }
 }

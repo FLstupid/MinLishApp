@@ -3,6 +3,7 @@ package com.example.minlish.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.minlish.data.model.VocabularySet
 import com.example.minlish.data.model.Word
 import com.example.minlish.data.preferences.UserPreferencesRepository
 import com.example.minlish.data.repository.StudySessionRepository
@@ -10,16 +11,14 @@ import com.example.minlish.data.repository.VocabSetRepository
 import com.example.minlish.data.repository.WordRepository
 import com.example.minlish.logic.SrsEngine
 import com.example.minlish.logic.StudySessionRecorder
-import com.example.minlish.logic.TtsManager
-import com.example.minlish.logic.TtsState
-import com.example.minlish.logic.TtsUiEvent
-import com.example.minlish.logic.UnavailableReason
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class QuizOption(val wordId: Long, val meaning: String)
@@ -57,108 +56,145 @@ data class FlashcardUiState(
     val cardTotal: Int = 0,
     val canNavigate: Boolean = false,
     val isReviewSaving: Boolean = false,
-    val speakEnabled: Boolean = false,
-    val speakLoading: Boolean = false,
 )
 
+/**
+ * ViewModel for the Practice screen.
+ *
+ * Practice only shows words that have been studied at least once (lastReviewed IS NOT NULL).
+ * The word list depends on the active vocabulary set, which can be switched via the dropdown.
+ *
+ * Three sub-modes share the same word list [_words]:
+ * - Flashcard: browse words and rate via SRS buttons
+ * - Quiz: multiple-choice meaning test, prioritizes due words with randomization
+ * - Typing: type the English word, prioritizes due words with randomization
+ */
 class PracticeViewModel(
     private val wordRepository: WordRepository,
     private val vocabSetRepository: VocabSetRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val studySessionRepository: StudySessionRepository,
-    private val ttsManager: TtsManager,
 ) : ViewModel() {
 
     private val sessionRecorder = StudySessionRecorder(studySessionRepository, viewModelScope)
 
+    // ── Set selector ──────────────────────────────────────────────
+
+    /** All available vocabulary sets for the dropdown. */
+    val availableSets: StateFlow<List<VocabularySet>> =
+        vocabSetRepository.getAllSets()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** The set currently selected in the dropdown (initially follows the active set from preferences). */
+    private val _selectedSetId = MutableStateFlow<Long?>(null)
+    val selectedSetId: StateFlow<Long?> = _selectedSetId.asStateFlow()
+
+    /** Human-readable name of the currently selected set. */
+    val currentSetName: StateFlow<String?> =
+        _selectedSetId.map { setId ->
+            if (setId == null) return@map null
+            availableSets.value.firstOrNull { it.id == setId }?.title
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Switch the practice session to a different vocabulary set. */
+    fun switchPracticeSet(setId: Long) {
+        if (_selectedSetId.value == setId) return
+        _selectedSetId.value = setId
+        // Persist so other screens (Learn, etc.) also pick up the change.
+        viewModelScope.launch {
+            userPreferencesRepository.setActiveSetId(setId)
+        }
+    }
+
+    // ── Word list & flashcard ─────────────────────────────────────
+
     private val _words = MutableStateFlow<List<Word>>(emptyList())
-
     private var flashcardIndex = 0
-
     private val _isReviewSaving = MutableStateFlow(false)
 
     private val _flashcardUiState = MutableStateFlow(FlashcardUiState())
     val flashcardUiState: StateFlow<FlashcardUiState> = _flashcardUiState.asStateFlow()
 
-    val uiEvents: SharedFlow<TtsUiEvent> = ttsManager.uiEvents
-
-    private var lastTtsState: TtsState = TtsState.Initializing
+    // ── Quiz ──────────────────────────────────────────────────────
 
     private val _quizState = MutableStateFlow<QuizUiState>(QuizUiState.Loading)
     val quizState: StateFlow<QuizUiState> = _quizState.asStateFlow()
+    private var currentQuizTarget: Word? = null
+    /** Track last shown quiz word to avoid immediate repetition. */
+    private var lastQuizWordId: Long? = null
+
+    // ── Typing ────────────────────────────────────────────────────
 
     private val _typingState = MutableStateFlow(
-        TypingUiState(
-            targetWord = null,
-            userInput = "",
-            attemptsLeft = 3,
-        )
+        TypingUiState(targetWord = null, userInput = "", attemptsLeft = 3),
     )
     val typingState: StateFlow<TypingUiState> = _typingState.asStateFlow()
+    /** Track last shown typing word to avoid immediate repetition. */
+    private var lastTypingWordId: Long? = null
 
-    private var currentQuizTarget: Word? = null
+    // ── Init: observe active set -> load words -> populate UI states ──
 
     init {
-        viewModelScope.launch {
-            ttsManager.state.collect { state ->
-                    lastTtsState = state
-                    publishFlashcardUiState()
-                }
-        }
-
+        // Initialize _selectedSetId from preferences, then follow changes.
         viewModelScope.launch {
             userPreferencesRepository.activeSetId
                 .distinctUntilChanged()
                 .collectLatest { activeSetId ->
                     val setId =
                         if (activeSetId > 0L) activeSetId else vocabSetRepository.getOrCreateDefaultSetId()
-                    val now = System.currentTimeMillis()
-                    wordRepository.getPracticeWords(setId, now).collectLatest { list ->
-                        _words.value = list
-                        flashcardIndex = 0
-                        publishFlashcardUiState()
-                        if (list.isNotEmpty() && _quizState.value is QuizUiState.Loading) {
-                            nextQuiz()
-                        } else if (list.isEmpty()) {
-                            _quizState.value = QuizUiState.Empty
-                        }
-                        if (_typingState.value.targetWord == null && list.isNotEmpty()) {
-                            nextTyping()
-                        } else if (list.isEmpty()) {
-                            _typingState.value = TypingUiState(
-                                targetWord = null,
-                                userInput = "",
-                                attemptsLeft = 3,
-                                feedbackKind = null,
-                                isCorrect = false,
-                            )
-                        }
+                    // Only update dropdown if user hasn't manually switched yet.
+                    if (_selectedSetId.value == null) {
+                        _selectedSetId.value = setId
                     }
+                    loadWordsForSet(setId)
                 }
         }
     }
 
-    fun onSpeakFlashcardClicked() {
-        val word = _flashcardUiState.value.word ?: return
-        ttsManager.speakEnglishWord(word)
+    /**
+     * Load studied words for the given set and refresh all sub-mode UI states.
+     *
+     * Flow: setId -> DAO query (lastReviewed IS NOT NULL) -> update _words -> reset indexes.
+     */
+    private fun loadWordsForSet(setId: Long) {
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            wordRepository.getPracticeWords(setId, now).collectLatest { list ->
+                _words.value = list
+                flashcardIndex = 0
+                lastQuizWordId = null
+                lastTypingWordId = null
+                publishFlashcardUiState()
+
+                if (list.isNotEmpty() && _quizState.value is QuizUiState.Loading) {
+                    nextQuiz()
+                } else if (list.isEmpty()) {
+                    _quizState.value = QuizUiState.Empty
+                }
+
+                if (_typingState.value.targetWord == null && list.isNotEmpty()) {
+                    nextTyping()
+                } else if (list.isEmpty()) {
+                    _typingState.value = TypingUiState(
+                        targetWord = null, userInput = "", attemptsLeft = 3,
+                    )
+                }
+            }
+        }
     }
+
+    // ── Flashcard ─────────────────────────────────────────────────
 
     fun previousFlashcard() {
         val list = _words.value
-        if (list.isEmpty()) {
-            publishFlashcardUiState()
-            return
-        }
+        if (list.isEmpty()) { publishFlashcardUiState(); return }
         flashcardIndex = if (flashcardIndex <= 0) list.size - 1 else flashcardIndex - 1
         publishFlashcardUiState()
     }
 
     fun nextFlashcard() {
         val list = _words.value
-        if (list.isEmpty()) {
-            publishFlashcardUiState()
-            return
-        }
+        if (list.isEmpty()) { publishFlashcardUiState(); return }
         flashcardIndex = (flashcardIndex + 1) % list.size
         publishFlashcardUiState()
     }
@@ -183,6 +219,8 @@ class PracticeViewModel(
         }
     }
 
+    // ── Quiz ──────────────────────────────────────────────────────
+
     fun nextQuiz() {
         val list = _words.value
         if (list.isEmpty()) {
@@ -192,8 +230,10 @@ class PracticeViewModel(
         }
 
         val now = System.currentTimeMillis()
-        val target = list.firstDueOrFirst(now)
+        val target = pickNextDueWordWithRandom(list, now, lastQuizWordId)
         currentQuizTarget = target
+        lastQuizWordId = target?.id
+
         if (target == null) {
             _quizState.value = QuizUiState.Empty
             return
@@ -205,8 +245,8 @@ class PracticeViewModel(
             .take(3)
 
         val optionWords = (listOf(target) + distractors).shuffled(kotlin.random.Random(System.nanoTime()))
-
         val options = optionWords.map { QuizOption(wordId = it.id, meaning = it.meaning) }
+
         _quizState.value = QuizUiState.Question(
             promptWord = target.word,
             promptPronunciation = target.pronunciation,
@@ -236,27 +276,26 @@ class PracticeViewModel(
         }
     }
 
+    // ── Typing ────────────────────────────────────────────────────
+
     fun nextTyping() {
         val list = _words.value
+        if (list.isEmpty()) {
+            _typingState.value = TypingUiState(targetWord = null, userInput = "", attemptsLeft = 3)
+            return
+        }
+
         val now = System.currentTimeMillis()
-        val target = list.firstDueOrFirst(now)
+        val target = pickNextDueWordWithRandom(list, now, lastTypingWordId)
+        lastTypingWordId = target?.id
+
         if (target == null) {
-            _typingState.value = TypingUiState(
-                targetWord = null,
-                userInput = "",
-                attemptsLeft = 3,
-                feedbackKind = null,
-                isCorrect = false,
-            )
+            _typingState.value = TypingUiState(targetWord = null, userInput = "", attemptsLeft = 3)
             return
         }
 
         _typingState.value = TypingUiState(
-            targetWord = target,
-            userInput = "",
-            attemptsLeft = 3,
-            feedbackKind = null,
-            isCorrect = false,
+            targetWord = target, userInput = "", attemptsLeft = 3,
         )
     }
 
@@ -267,17 +306,15 @@ class PracticeViewModel(
     fun submitTypingAnswer() {
         val state = _typingState.value
         val target = state.targetWord ?: return
-
         if (state.isCorrect) return
 
         val normalizedInput = state.userInput.trim().lowercase()
         val normalizedTarget = target.word.trim().lowercase()
-
         val isCorrect = normalizedInput == normalizedTarget
+
         if (isCorrect) {
             _typingState.value = state.copy(
-                feedbackKind = TypingFeedbackKind.Correct,
-                isCorrect = true,
+                feedbackKind = TypingFeedbackKind.Correct, isCorrect = true,
             )
             viewModelScope.launch {
                 val updated = SrsEngine.calculateNextReview(target, 4)
@@ -290,11 +327,7 @@ class PracticeViewModel(
             _typingState.value = state.copy(
                 userInput = "",
                 attemptsLeft = remaining,
-                feedbackKind = if (remaining == 0) {
-                    TypingFeedbackKind.OutOfAttempts
-                } else {
-                    TypingFeedbackKind.TryAgain
-                },
+                feedbackKind = if (remaining == 0) TypingFeedbackKind.OutOfAttempts else TypingFeedbackKind.TryAgain,
                 isCorrect = false,
             )
             if (remaining == 0) {
@@ -308,6 +341,12 @@ class PracticeViewModel(
         }
     }
 
+    // ── Helpers ───────────────────────────────────────────────────
+
+    /**
+     * Aggregate current word list, flashcard index, review-in-progress flag, and TTS state
+     * into a single [FlashcardUiState] for the UI to collect.
+     */
     private fun publishFlashcardUiState() {
         val list = _words.value
         val word = list.getOrNull(flashcardIndex)
@@ -318,11 +357,6 @@ class PracticeViewModel(
             cardTotal = total,
             canNavigate = total > 1,
             isReviewSaving = _isReviewSaving.value,
-            speakEnabled = when (val s = lastTtsState) {
-                is TtsState.Unavailable -> s.reason != UnavailableReason.InitFailed
-                else -> true
-            },
-            speakLoading = lastTtsState is TtsState.Initializing,
         )
     }
 
@@ -332,9 +366,33 @@ class PracticeViewModel(
     }
 }
 
-private fun List<Word>.firstDueOrFirst(now: Long): Word? {
-    if (isEmpty()) return null
-    return firstOrNull { it.repetitions > 0 && it.nextReviewDate <= now } ?: first()
+/**
+ * Pick the next word for Quiz or Typing using SRS priority + randomization.
+ *
+ * Strategy:
+ * 1. Due words (nextReviewDate <= now) are prioritized.
+ * 2. Among due words, pick randomly (excluding [excludeId] to avoid immediate repetition).
+ * 3. If no due words, pick randomly from all words (excluding [excludeId]).
+ * 4. If only 1 word remains (the excluded one itself), return it anyway.
+ */
+private fun pickNextDueWordWithRandom(
+    words: List<Word>,
+    now: Long,
+    excludeId: Long?,
+): Word? {
+    if (words.isEmpty()) return null
+
+    val dueWords = words.filter {
+        it.repetitions > 0 && it.nextReviewDate <= now
+    }
+
+    val candidates = if (dueWords.isNotEmpty()) {
+        dueWords.filter { it.id != excludeId }.ifEmpty { dueWords }
+    } else {
+        words.filter { it.id != excludeId }.ifEmpty { words }
+    }
+
+    return candidates.random(kotlin.random.Random(System.nanoTime()))
 }
 
 class PracticeViewModelFactory(
@@ -342,7 +400,6 @@ class PracticeViewModelFactory(
     private val vocabSetRepository: VocabSetRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val studySessionRepository: StudySessionRepository,
-    private val ttsManager: TtsManager,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(PracticeViewModel::class.java)) {
@@ -352,7 +409,6 @@ class PracticeViewModelFactory(
                 vocabSetRepository,
                 userPreferencesRepository,
                 studySessionRepository,
-                ttsManager,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

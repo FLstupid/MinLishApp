@@ -167,8 +167,8 @@ class UserPreferencesRepository(
             uid = uid,
             email = email,
             name = prefs[profileNameKey].orEmpty().ifBlank { displayName },
-            goal = prefs[profileGoalKey] ?: "IELTS",
-            level = CefrLevels.normalize(prefs[profileLevelKey] ?: "B1"),
+            goal = prefs[profileGoalKey] ?: CefrLevels.DEFAULT_GOAL,
+            level = CefrLevels.normalize(prefs[profileLevelKey] ?: CefrLevels.DEFAULT_LEVEL),
             dailyGoal = prefs[profileDailyGoalKey] ?: 10,
         )
     }

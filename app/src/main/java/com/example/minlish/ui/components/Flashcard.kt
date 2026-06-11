@@ -3,15 +3,26 @@ package com.example.minlish.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.minlish.R
 import com.example.minlish.data.model.Word
 
 @Composable
@@ -27,13 +38,21 @@ fun Flashcard(
         label = "CardRotation"
     )
 
+    val tapHint = stringResource(R.string.learn_tap_flip)
+    val frontContentDesc = word.word + word.pronunciation?.let { " ($it)" }.orEmpty()
+    val backContentDesc = word.meaning + word.example?.let { ". $it" }.orEmpty()
+    val cardContentDesc = if (rotation <= 90f) frontContentDesc else backContentDesc
+
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(280.dp)
+            .heightIn(min = 200.dp, max = 360.dp)
             .graphicsLayer {
                 rotationY = rotation
                 cameraDistance = 12f * density
+            }
+            .semantics {
+                contentDescription = "$cardContentDesc. $tapHint"
             }
             .clickable { rotated = !rotated },
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)

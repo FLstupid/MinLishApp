@@ -59,6 +59,9 @@ class WordRepository(
     fun getPracticeWords(setId: Long, now: Long = System.currentTimeMillis()): Flow<List<Word>> =
         wordDao.getPracticeWords(setId = setId, now = now)
 
+    suspend fun getStudiedWordsBySet(setId: Long): List<Word> =
+        wordDao.getStudiedWordsBySet(setId = setId)
+
     suspend fun existsInSet(setId: Long, word: String): Boolean =
         wordDao.existsInSet(setId = setId, word = word)
 
@@ -177,8 +180,34 @@ class WordRepository(
             pendingKeys.add(key)
             val remoteReviewed = w.lastReviewed ?: 0L
             val localReviewed = existing.lastReviewed ?: 0L
-            if (remoteReviewed >= localReviewed) {
-                wordDao.updateWord(WordNorm.withNorm(w.copy(id = existing.id)))
+            if (remoteReviewed > localReviewed) {
+                // Remote is newer: overwrite local, but preserve local SRS progress
+                // if local has advanced further (more repetitions).
+                val localHasBetterSrs = existing.repetitions > w.repetitions
+                val merged = if (localHasBetterSrs) {
+                    w.copy(
+                        id = existing.id,
+                        easeFactor = maxOf(existing.easeFactor, w.easeFactor),
+                        interval = maxOf(existing.interval, w.interval),
+                        repetitions = existing.repetitions,
+                        lastReviewed = existing.lastReviewed,
+                        nextReviewDate = existing.nextReviewDate,
+                    )
+                } else {
+                    w.copy(id = existing.id)
+                }
+                wordDao.updateWord(WordNorm.withNorm(merged))
+            } else if (remoteReviewed == localReviewed && localReviewed > 0L) {
+                // Same timestamp: keep the version with more advanced SRS progress.
+                if (existing.repetitions > w.repetitions) {
+                    wordDao.updateWord(WordNorm.withNorm(w.copy(
+                        id = existing.id,
+                        easeFactor = existing.easeFactor,
+                        interval = existing.interval,
+                        repetitions = existing.repetitions,
+                        nextReviewDate = existing.nextReviewDate,
+                    )))
+                }
             }
         }
 

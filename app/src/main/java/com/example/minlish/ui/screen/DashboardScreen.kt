@@ -52,7 +52,7 @@ fun DashboardScreen(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "MinLish",
+                text = stringResource(R.string.app_name),
                 style = MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.primary
@@ -164,7 +164,7 @@ fun DashboardScreen(
         ) {
             StatItem(
                 label = stringResource(R.string.stat_level),
-                value = analyticsSkillLevelLabel(state.skillLevel),
+                value = state.profileLevelLabel.ifEmpty { analyticsSkillLevelLabel(state.skillLevel) },
                 modifier = Modifier.fillMaxWidth(),
             )
         }

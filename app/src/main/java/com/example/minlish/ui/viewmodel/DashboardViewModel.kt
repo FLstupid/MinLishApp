@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlin.math.min
 
@@ -26,6 +27,8 @@ data class DashboardUiState(
     val accuracyPercent: Int = 0,
     val objectiveAccuracyPercent: Int = 0,
     val skillLevel: AnalyticsSkillLevel = AnalyticsSkillLevel.Beginner,
+    /** Profile level from user settings (e.g. "B2"), empty string if not set. */
+    val profileLevelLabel: String = "",
     val hasDailyQueue: Boolean = false,
     val canStudyMore: Boolean = false,
     val bonusBatch: Int = 0,
@@ -40,6 +43,7 @@ class DashboardViewModel(
     learnedCount: Flow<Int>,
     setWordCount: Flow<Int>,
     analyticsUiState: Flow<AnalyticsUiState>,
+    profileLevel: Flow<String?>,
     private val bonusBatchSize: () -> Int,
 ) : ViewModel() {
 
@@ -50,6 +54,7 @@ class DashboardViewModel(
         learnedCount,
         setWordCount,
         analyticsUiState,
+        profileLevel,
     ) { values ->
         val review = values[0] as Int
         val newAvail = values[1] as Int
@@ -57,6 +62,7 @@ class DashboardViewModel(
         val learned = values[3] as Int
         val setTotal = values[4] as Int
         val analytics = values[5] as AnalyticsUiState
+        val level = values[6] as String?
         val hasDailyQueue = newAvail > 0 || review > 0
         val bonus = min(bonusBatchSize(), pool)
         val canStudyMore = !hasDailyQueue && pool > 0
@@ -75,6 +81,7 @@ class DashboardViewModel(
             accuracyPercent = analytics.accuracyPercent,
             objectiveAccuracyPercent = analytics.objectiveAccuracyPercent,
             skillLevel = analytics.skillLevel,
+            profileLevelLabel = level?.takeIf { it.isNotBlank() }.orEmpty(),
             hasDailyQueue = hasDailyQueue,
             canStudyMore = canStudyMore,
             bonusBatch = bonus,
@@ -91,6 +98,7 @@ class DashboardViewModel(
 class DashboardViewModelFactory(
     private val wordViewModel: WordViewModel,
     private val analyticsViewModel: AnalyticsViewModel,
+    private val profileLevel: Flow<String?>,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
@@ -102,6 +110,7 @@ class DashboardViewModelFactory(
                 learnedCount = wordViewModel.learnedCount,
                 setWordCount = wordViewModel.setWordCount,
                 analyticsUiState = analyticsViewModel.uiState,
+                profileLevel = profileLevel,
                 bonusBatchSize = { wordViewModel.bonusBatchSize() },
             ) as T
         }

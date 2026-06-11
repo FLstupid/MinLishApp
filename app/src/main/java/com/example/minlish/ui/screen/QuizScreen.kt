@@ -71,8 +71,9 @@ fun QuizScreen(
                     text = s.promptWord,
                     style = MaterialTheme.typography.headlineSmall,
                 )
-                if (!s.promptPronunciation.isNullOrBlank()) {
-                    Text(text = s.promptPronunciation!!, style = MaterialTheme.typography.bodySmall)
+                val pronunciation = s.promptPronunciation
+                if (!pronunciation.isNullOrBlank()) {
+                    Text(text = pronunciation, style = MaterialTheme.typography.bodySmall)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))

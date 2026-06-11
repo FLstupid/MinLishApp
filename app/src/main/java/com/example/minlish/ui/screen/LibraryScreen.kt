@@ -21,7 +21,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -207,9 +210,10 @@ fun LibraryScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(set.title, style = MaterialTheme.typography.titleMedium)
-                        if (!set.description.isNullOrBlank()) {
+                        val desc = set.description
+                        if (!desc.isNullOrBlank()) {
                             Text(
-                                set.description!!,
+                                desc,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -295,7 +299,10 @@ fun LibraryScreen(
             contentColor = MaterialTheme.colorScheme.onPrimary,
             shape = MaterialTheme.shapes.large,
         ) {
-            Text("+", fontWeight = FontWeight.Bold)
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = stringResource(R.string.cd_add),
+            )
         }
     }
 

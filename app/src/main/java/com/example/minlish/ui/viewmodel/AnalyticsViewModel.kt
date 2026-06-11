@@ -7,9 +7,9 @@ import com.example.minlish.data.repository.StudySessionRepository
 import com.example.minlish.data.repository.VocabSetRepository
 import com.example.minlish.data.repository.WordRepository
 import com.example.minlish.data.preferences.UserPreferencesRepository
+import com.example.minlish.logic.startOfDayMs
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.util.Calendar
 
 data class DailyActivity(
     val dayStart: Long,
@@ -173,16 +173,6 @@ class AnalyticsViewModel(
         if (accuracyForLevel >= 80 && learnedCount >= 150) return AnalyticsSkillLevel.Advanced
         if (accuracyForLevel >= 60 && learnedCount >= 50) return AnalyticsSkillLevel.Intermediate
         return AnalyticsSkillLevel.Beginner
-    }
-
-    private fun startOfDayMs(epochMs: Long): Long {
-        val cal = Calendar.getInstance()
-        cal.timeInMillis = epochMs
-        cal.set(Calendar.HOUR_OF_DAY, 0)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        return cal.timeInMillis
     }
 }
 

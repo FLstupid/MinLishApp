@@ -1,11 +1,14 @@
 package com.example.minlish.logic
 
 object CefrLevels {
+    const val DEFAULT_LEVEL = "B1"
+    const val DEFAULT_GOAL = "IELTS"
+
     val ORDERED = listOf("A1", "A2", "B1", "B2", "C1", "C2")
 
     fun normalize(raw: String?): String {
         val trimmed = raw?.trim()?.uppercase().orEmpty()
-        return trimmed.takeIf { it in ORDERED } ?: "B1"
+        return trimmed.takeIf { it in ORDERED } ?: DEFAULT_LEVEL
     }
 
     /** CEFR bands at or below [userLevel] (inclusive). */

@@ -21,11 +21,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.minlish.R
 import com.example.minlish.ui.components.Flashcard
-import com.example.minlish.ui.components.TtsUnavailableSnackbarEffect
 import com.example.minlish.ui.viewmodel.LearnUiState
 import com.example.minlish.ui.viewmodel.WordViewModel
 import kotlin.math.min
@@ -55,16 +51,9 @@ fun LearnScreen(
     val uiState by viewModel.uiState.collectAsState()
     val isAnswering by viewModel.isAnswering.collectAsState()
     val poolRemainingCount by viewModel.poolRemainingCount.collectAsState()
-    val speakEnabled by viewModel.speakEnabled.collectAsState()
-    val speakLoading by viewModel.speakLoading.collectAsState()
     val bonusBatch = min(viewModel.bonusBatchSize(), poolRemainingCount)
-    val snackbarHostState = remember { SnackbarHostState() }
 
-    TtsUnavailableSnackbarEffect(viewModel.uiEvents, snackbarHostState)
-
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { padding ->
+    Scaffold { padding ->
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -196,22 +185,8 @@ fun LearnScreen(
                             text = stringResource(R.string.learn_tap_flip),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 8.dp),
-                        )
-                        OutlinedButton(
-                            onClick = { viewModel.onSpeakCurrentWord() },
-                            enabled = speakEnabled,
                             modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
-                        ) {
-                            if (speakLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    strokeWidth = 2.dp,
-                                )
-                            } else {
-                                Text(stringResource(R.string.practice_speak))
-                            }
-                        }
+                        )
                     }
 
                     Column(

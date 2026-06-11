@@ -2,6 +2,7 @@
 
 import android.Manifest
 import android.os.Bundle
+import kotlinx.coroutines.flow.map
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -13,6 +14,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,6 +42,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.minlish.R
+import com.example.minlish.logic.CefrLevels
 import com.example.minlish.ui.navigation.AppDestinations
 import com.example.minlish.ui.screen.AnalyticsScreen
 import com.example.minlish.ui.screen.AuthScreen
@@ -139,7 +143,6 @@ fun MinLishRoot(initialDestination: AppDestinations = AppDestinations.DASHBOARD)
             app.vocabSetRepository,
             app.studySessionRepository,
             app.userPreferencesRepository,
-            app.ttsManager,
         )
     )
 
@@ -158,7 +161,6 @@ fun MinLishRoot(initialDestination: AppDestinations = AppDestinations.DASHBOARD)
             app.vocabSetRepository,
             app.userPreferencesRepository,
             app.studySessionRepository,
-            app.ttsManager,
         )
     )
 
@@ -183,8 +185,9 @@ fun MinLishRoot(initialDestination: AppDestinations = AppDestinations.DASHBOARD)
     val profileViewModel: ProfileViewModel = viewModel(
         factory = ProfileViewModelFactory(app.userPreferencesRepository),
     )
+    val profileLevelFlow = authViewModel.profile.map { it?.level }
     val dashboardViewModel: DashboardViewModel = viewModel(
-        factory = DashboardViewModelFactory(wordViewModel, analyticsViewModel),
+        factory = DashboardViewModelFactory(wordViewModel, analyticsViewModel, profileLevelFlow),
     )
 
     MinLishTabs(
@@ -226,7 +229,7 @@ fun MinLishTabs(
     val sets by setViewModel.sets.collectAsState()
     val profile by authViewModel.profile.collectAsState()
     val dailyGoal = profile?.dailyGoal ?: 10
-    val userLevel = profile?.level ?: "B1"
+    val userLevel = profile?.level ?: CefrLevels.DEFAULT_LEVEL
 
     LaunchedEffect(dailyGoal) {
         wordViewModel.setDailyGoal(dailyGoal)
@@ -320,7 +323,10 @@ fun MinLishTabs(
                             IconButton(
                                 onClick = { setViewModel.clearSelection() },
                             ) {
-                                Text("<", style = MaterialTheme.typography.titleMedium)
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = stringResource(R.string.action_close),
+                                )
                             }
                         },
                     )
@@ -337,7 +343,10 @@ fun MinLishTabs(
                             IconButton(
                                 onClick = { showAnalytics = false },
                             ) {
-                                Text("<", style = MaterialTheme.typography.titleMedium)
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = stringResource(R.string.action_close),
+                                )
                             }
                         },
                     )

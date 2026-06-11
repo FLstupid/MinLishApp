@@ -22,12 +22,13 @@ class VocabSetRepository(
     companion object {
         // Prevent multiple ViewModels creating the default set concurrently.
         private val defaultSetMutex = Mutex()
+        /** Legacy title used for cleanup of old empty default sets. */
         const val DEFAULT_SET_TITLE = "Bộ từ của tôi"
     }
 
     fun getAllSets(): Flow<List<VocabularySet>> = vocabularySetDao.getAllSets()
 
-    suspend fun getOrCreateDefaultSetId(): Long {
+    suspend fun getOrCreateDefaultSetId(defaultSetTitle: String = DEFAULT_SET_TITLE): Long {
         return defaultSetMutex.withLock {
             val sets = vocabularySetDao.getAllSets().first()
             if (sets.isNotEmpty()) return@withLock sets.first().id
@@ -35,7 +36,7 @@ class VocabSetRepository(
             // Create a single default set for MVP flows.
             val insertedId = vocabularySetDao.insertSet(
                 VocabularySet(
-                    title = DEFAULT_SET_TITLE,
+                    title = defaultSetTitle,
                     description = null,
                     tags = "",
                     wordCount = 0,
@@ -51,8 +52,8 @@ class VocabSetRepository(
     }
 
     /** Removes empty placeholder sets created before starter content is installed. */
-    suspend fun deleteEmptyDefaultSets() {
-        val legacyTitles = setOf(DEFAULT_SET_TITLE, "My vocabulary")
+    suspend fun deleteEmptyDefaultSets(currentDefaultTitle: String = DEFAULT_SET_TITLE) {
+        val legacyTitles = setOf(currentDefaultTitle, DEFAULT_SET_TITLE, "My vocabulary")
         val sets = vocabularySetDao.getAllSets().first()
         for (set in sets) {
             if (set.title !in legacyTitles) continue

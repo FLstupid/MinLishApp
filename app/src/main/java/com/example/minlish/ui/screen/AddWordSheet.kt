@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.minlish.R
@@ -49,6 +50,7 @@ fun AddWordSheet(
     var validationError by remember { mutableStateOf<String?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     suspend fun dismissSheet() {
         sheetState.hide()
@@ -145,7 +147,7 @@ fun AddWordSheet(
             Button(
                 onClick = {
                     if (word.isBlank() || meaning.isBlank()) {
-                        validationError = "Vui lòng nhập từ và nghĩa."
+                        validationError = context.getString(R.string.add_word_validation_error)
                         return@Button
                     }
                     validationError = null

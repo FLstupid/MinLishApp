@@ -12,18 +12,15 @@ import com.example.minlish.logic.CefrLevels
 import com.example.minlish.logic.SrsEngine
 import com.example.minlish.logic.StudyQueueBuilder
 import com.example.minlish.logic.StudySessionRecorder
-import com.example.minlish.logic.TtsManager
-import com.example.minlish.logic.TtsState
-import com.example.minlish.logic.TtsUiEvent
-import com.example.minlish.logic.UnavailableReason
+import com.example.minlish.logic.startOfDayMs
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Job
+import android.util.Log
 import kotlinx.coroutines.launch
 
 enum class LearnQueueMode {
@@ -36,7 +33,6 @@ class WordViewModel(
     private val vocabSetRepository: VocabSetRepository,
     private val studySessionRepository: StudySessionRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val ttsManager: TtsManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<LearnUiState>(LearnUiState.Loading)
@@ -65,7 +61,7 @@ class WordViewModel(
     private var queueMode: LearnQueueMode = LearnQueueMode.Daily
 
     private var dailyGoal: Int = 10
-    private var userLevel: String = "B1"
+    private var userLevel: String = CefrLevels.DEFAULT_LEVEL
 
     private val sessionRecorder = StudySessionRecorder(studySessionRepository, viewModelScope)
     private var sessionWordsReviewed: Int = 0
@@ -80,34 +76,7 @@ class WordViewModel(
     private var statsCollectionJob: Job? = null
     private var queueJob: Job? = null
 
-    private val _speakEnabled = MutableStateFlow(false)
-    val speakEnabled: StateFlow<Boolean> = _speakEnabled.asStateFlow()
-
-    private val _speakLoading = MutableStateFlow(true)
-    val speakLoading: StateFlow<Boolean> = _speakLoading.asStateFlow()
-
-    val uiEvents: SharedFlow<TtsUiEvent> = ttsManager.uiEvents
-
     init {
-        viewModelScope.launch {
-            ttsManager.state.collect { state ->
-                when (state) {
-                    is TtsState.Unavailable -> {
-                        _speakEnabled.value = state.reason != UnavailableReason.InitFailed
-                        _speakLoading.value = false
-                    }
-                    is TtsState.Ready -> {
-                        _speakEnabled.value = true
-                        _speakLoading.value = false
-                    }
-                    is TtsState.Initializing -> {
-                        _speakEnabled.value = true
-                        _speakLoading.value = true
-                    }
-                }
-            }
-        }
-
         viewModelScope.launch {
             repository.syncFromCurrentUser()
             userPreferencesRepository.activeSetId
@@ -255,15 +224,6 @@ class WordViewModel(
         }
     }
 
-    fun onSpeakCurrentWord() {
-        ttsManager.speakEnglishWord(
-            when (val state = _uiState.value) {
-                is LearnUiState.Success -> state.word
-                else -> return
-            },
-        )
-    }
-
     fun onAnswer(quality: Int) {
         if (answerInFlight) return
         val state = _uiState.value
@@ -275,11 +235,11 @@ class WordViewModel(
             val updatedWord = SrsEngine.calculateNextReview(state.word, quality)
             answerInFlight = true
             _isAnswering.value = true
+            sessionWordsReviewed += 1
+            sessionRecorder.recordAnswer(quality)
             viewModelScope.launch {
                 try {
                     repository.updateWordLocal(updatedWord)
-                    sessionWordsReviewed += 1
-                    sessionRecorder.recordAnswer(quality)
                     if (
                         queueMode == LearnQueueMode.Daily &&
                         wasFirstIntroduction &&
@@ -288,23 +248,23 @@ class WordViewModel(
                         val todayKey = startOfDayMs(System.currentTimeMillis())
                         userPreferencesRepository.incrementDailyNewStudiedCount(todayKey)
                     }
-                    showNextWord(
-                        retryWord = if (retryIntroductionSameSession) updatedWord else null,
-                    )
                     launch {
                         repository.syncWordToCloud(updatedWord)
                     }
-                } catch (_: Exception) {
-                    // DB update failed; session stats unchanged.
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to persist SRS answer for word ${updatedWord.id}", e)
                 } finally {
-                    answerInFlight = false
-                    _isAnswering.value = false
+                    showNextWord(
+                        retryWord = if (retryIntroductionSameSession) updatedWord else null,
+                    )
                 }
             }
         }
     }
 
     private fun showNextWord(retryWord: Word? = null) {
+        answerInFlight = false
+        _isAnswering.value = false
         if (retryWord != null) {
             currentWords = currentWords + retryWord
         }
@@ -323,17 +283,9 @@ class WordViewModel(
         }
     }
 
-    private fun startOfDayMs(epochMs: Long): Long {
-        val cal = java.util.Calendar.getInstance()
-        cal.timeInMillis = epochMs
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
-        cal.set(java.util.Calendar.MINUTE, 0)
-        cal.set(java.util.Calendar.SECOND, 0)
-        cal.set(java.util.Calendar.MILLISECOND, 0)
-        return cal.timeInMillis
-    }
-
     private companion object {
+        private const val TAG = "WordViewModel"
+
         fun bonusBatchSizeForGoal(dailyGoal: Int): Int =
             dailyGoal.coerceIn(BONUS_BATCH_MIN, BONUS_BATCH_MAX)
 
@@ -363,7 +315,6 @@ class WordViewModelFactory(
     private val vocabSetRepository: VocabSetRepository,
     private val studySessionRepository: StudySessionRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val ttsManager: TtsManager,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(WordViewModel::class.java)) {
@@ -373,7 +324,6 @@ class WordViewModelFactory(
                 vocabSetRepository,
                 studySessionRepository,
                 userPreferencesRepository,
-                ttsManager,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
