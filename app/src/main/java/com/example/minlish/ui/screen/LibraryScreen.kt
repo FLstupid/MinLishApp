@@ -57,11 +57,10 @@ fun LibraryScreen(
     setViewModel: SetViewModel,
     profileGoal: String,
     onGoLearn: () -> Unit,
+    onSetSelected: (Long) -> Unit = {},
 ) {
     val recommendedPackId = setViewModel.recommendedPackIdForGoal(profileGoal)
     val sets by setViewModel.sets.collectAsState()
-    val selectedSetId by setViewModel.selectedSetId.collectAsState()
-    val words by setViewModel.wordsInSelectedSet.collectAsState()
 
     var showCreateSet by remember { mutableStateOf(false) }
     var setTitle by remember { mutableStateOf("") }
@@ -76,27 +75,6 @@ fun LibraryScreen(
 
     var showDeleteSet by remember { mutableStateOf(false) }
     var deleteSet by remember { mutableStateOf<VocabularySet?>(null) }
-
-    val selectedId = selectedSetId
-    if (selectedId != null) {
-        val selectedSet = sets.firstOrNull { it.id == selectedId } ?: VocabularySet(
-            id = selectedId,
-            title = stringResource(R.string.set_fallback_title),
-            description = null,
-            tags = "",
-            wordCount = 0,
-            createdAt = 0L,
-            userId = ""
-        )
-
-        SetDetailScreen(
-            set = selectedSet,
-            words = words,
-            viewModel = setViewModel,
-            onGoLearn = onGoLearn,
-        )
-        return
-    }
 
     val installedPackIds by setViewModel.installedStarterPackIds.collectAsState()
     val starterPacks = setViewModel.starterPacks
@@ -226,7 +204,7 @@ fun LibraryScreen(
                         )
                         Spacer(Modifier.height(12.dp))
                         Button(
-                            onClick = { setViewModel.selectSet(set.id) },
+                            onClick = { onSetSelected(set.id) },
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.large,
                         ) {
@@ -442,9 +420,6 @@ fun LibraryScreen(
                         setViewModel.deleteSet(current)
                         showDeleteSet = false
                         deleteSet = null
-                        if (selectedSetId == current.id) {
-                            setViewModel.clearSelection()
-                        }
                     },
                 ) {
                     Text(stringResource(R.string.library_delete))

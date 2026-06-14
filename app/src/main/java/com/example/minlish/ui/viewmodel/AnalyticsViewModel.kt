@@ -128,8 +128,8 @@ class AnalyticsViewModel(
                     DailyObjectiveRetention(dayStart = day, retentionPercent = retention)
                 }
 
-                // Streak: consecutive days with at least one study session.
-                val daySet = sessions.map { it.date }.toSet()
+                // Streak: consecutive days with at least one study session (last 7 days).
+                val daySet = recent.map { it.date }.toSet()
                 var streak = 0
                 var cursor = todayStart
                 while (daySet.contains(cursor)) {

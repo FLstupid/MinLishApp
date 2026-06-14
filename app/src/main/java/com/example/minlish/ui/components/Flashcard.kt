@@ -77,7 +77,6 @@ fun Flashcard(
                 // Back Side
                 Column(
                     modifier = Modifier
-                        .graphicsLayer { rotationY = 180f }
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {

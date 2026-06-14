@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -219,17 +220,17 @@ fun LearnScreen(
                             ) { viewModel.onAnswer(0) }
                             SRSButton(
                                 stringResource(R.string.srs_hard),
-                                MaterialTheme.colorScheme.secondaryContainer,
+                                Color(0xFFFFF3E0), // Orange-50 container
                                 enabled = !isAnswering,
                             ) { viewModel.onAnswer(3) }
                             SRSButton(
                                 stringResource(R.string.srs_good),
-                                MaterialTheme.colorScheme.primaryContainer,
+                                Color(0xFFE8F5E9), // Green-50 container
                                 enabled = !isAnswering,
                             ) { viewModel.onAnswer(4) }
                             SRSButton(
                                 stringResource(R.string.srs_easy),
-                                MaterialTheme.colorScheme.tertiaryContainer,
+                                Color(0xFFE3F2FD), // Blue-50 container
                                 enabled = !isAnswering,
                             ) { viewModel.onAnswer(5) }
                         }
@@ -251,14 +252,16 @@ fun RowScope.SRSButton(
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.weight(1f),
+        modifier = Modifier
+            .weight(1f)
+            .height(48.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
             contentColor = contentColorFor(containerColor)
         ),
-        contentPadding = PaddingValues(0.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
         shape = MaterialTheme.shapes.medium
     ) {
-        Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }

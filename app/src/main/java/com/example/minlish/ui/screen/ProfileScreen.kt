@@ -7,6 +7,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
@@ -282,13 +285,31 @@ fun ProfileScreen(
                 singleLine = true,
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
 
-            Text(
-                text = stringResource(R.string.profile_notifications_section),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
+            // ── Notifications section (collapsible) ──
+            var showNotifications by remember { mutableStateOf(false) }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showNotifications = !showNotifications },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = stringResource(R.string.profile_notifications_section),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Icon(
+                    imageVector = if (showNotifications) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                )
+            }
+
+            AnimatedVisibility(visible = showNotifications) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -359,6 +380,8 @@ fun ProfileScreen(
             ) {
                 Text(stringResource(R.string.profile_save_settings))
             }
+                } // Column inside AnimatedVisibility
+            } // AnimatedVisibility
 
             val isLoading = uiState is AuthUiState.Loading
 

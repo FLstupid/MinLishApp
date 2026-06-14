@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -38,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -239,17 +241,17 @@ private fun FlashcardPractice(
                     ) { viewModel.onPracticeReview(0) }
                     PracticeSrsButton(
                         stringResource(R.string.srs_hard),
-                        MaterialTheme.colorScheme.secondaryContainer,
+                        Color(0xFFFFF3E0), // Orange-50 container
                         enabled = !flashcard.isReviewSaving,
                     ) { viewModel.onPracticeReview(3) }
                     PracticeSrsButton(
                         stringResource(R.string.srs_good),
-                        MaterialTheme.colorScheme.primaryContainer,
+                        Color(0xFFE8F5E9), // Green-50 container
                         enabled = !flashcard.isReviewSaving,
                     ) { viewModel.onPracticeReview(4) }
                     PracticeSrsButton(
                         stringResource(R.string.srs_easy),
-                        MaterialTheme.colorScheme.tertiaryContainer,
+                        Color(0xFFE3F2FD), // Blue-50 container
                         enabled = !flashcard.isReviewSaving,
                     ) { viewModel.onPracticeReview(5) }
                 }
@@ -268,14 +270,16 @@ private fun RowScope.PracticeSrsButton(
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.weight(1f),
+        modifier = Modifier
+            .weight(1f)
+            .height(48.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
             contentColor = contentColorFor(containerColor),
         ),
-        contentPadding = PaddingValues(0.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
         shape = MaterialTheme.shapes.medium,
     ) {
-        Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }

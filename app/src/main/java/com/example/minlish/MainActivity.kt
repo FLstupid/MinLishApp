@@ -8,7 +8,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -27,13 +26,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -41,9 +39,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.minlish.R
+import com.example.minlish.data.model.VocabularySet
 import com.example.minlish.logic.CefrLevels
 import com.example.minlish.ui.navigation.AppDestinations
+import com.example.minlish.ui.navigation.Routes
 import com.example.minlish.ui.screen.AnalyticsScreen
 import com.example.minlish.ui.screen.AuthScreen
 import com.example.minlish.ui.screen.CheckpointScreen
@@ -52,6 +58,7 @@ import com.example.minlish.ui.screen.LearnScreen
 import com.example.minlish.ui.screen.LibraryScreen
 import com.example.minlish.ui.screen.PracticeScreen
 import com.example.minlish.ui.screen.ProfileScreen
+import com.example.minlish.ui.screen.SetDetailScreen
 import com.example.minlish.ui.theme.MinLishTheme
 import com.example.minlish.ui.viewmodel.AnalyticsViewModel
 import com.example.minlish.ui.viewmodel.AnalyticsViewModelFactory
@@ -77,8 +84,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val initialDestination = when (intent.getStringExtra(EXTRA_OPEN_DESTINATION)) {
-            "LEARN" -> AppDestinations.LEARN
-            else -> AppDestinations.DASHBOARD
+            "LEARN" -> Routes.LEARN
+            else -> Routes.DASHBOARD
         }
         setContent {
             MinLishTheme {
@@ -105,7 +112,7 @@ fun NotificationPermissionEffect() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MinLishRoot(initialDestination: AppDestinations = AppDestinations.DASHBOARD) {
+fun MinLishRoot(initialDestination: String = Routes.DASHBOARD) {
     val context = LocalContext.current
     val app = context.applicationContext as MinLishApplication
 
@@ -199,7 +206,7 @@ fun MinLishRoot(initialDestination: AppDestinations = AppDestinations.DASHBOARD)
         checkpointViewModel = checkpointViewModel,
         profileViewModel = profileViewModel,
         dashboardViewModel = dashboardViewModel,
-        initialDestination = initialDestination,
+        initialRoute = initialDestination,
     )
 }
 
@@ -214,56 +221,47 @@ fun MinLishTabs(
     checkpointViewModel: CheckpointViewModel,
     profileViewModel: ProfileViewModel,
     dashboardViewModel: DashboardViewModel,
-    initialDestination: AppDestinations = AppDestinations.DASHBOARD,
+    initialRoute: String = Routes.DASHBOARD,
 ) {
-    var currentDestination by rememberSaveable { mutableStateOf(initialDestination) }
-    var showAnalytics by rememberSaveable { mutableStateOf(false) }
-    var skipNextLearnRefresh by remember { mutableStateOf(false) }
-    var showCheckpoint by rememberSaveable { mutableStateOf(false) }
-    var checkpointAutoStart by rememberSaveable { mutableStateOf(false) }
+    val navController = rememberNavController()
+    val skipNextLearnRefresh = remember { mutableStateOf(false) }
 
     val offerCheckpoint by wordViewModel.offerCheckpoint.collectAsState()
-
     val analyticsUiState by analyticsViewModel.uiState.collectAsState()
-    val selectedSetId by setViewModel.selectedSetId.collectAsState()
-    val sets by setViewModel.sets.collectAsState()
     val profile by authViewModel.profile.collectAsState()
+    val sets by setViewModel.sets.collectAsState()
+
     val dailyGoal = profile?.dailyGoal ?: 10
     val userLevel = profile?.level ?: CefrLevels.DEFAULT_LEVEL
 
-    LaunchedEffect(dailyGoal) {
-        wordViewModel.setDailyGoal(dailyGoal)
-    }
+    LaunchedEffect(dailyGoal) { wordViewModel.setDailyGoal(dailyGoal) }
+    LaunchedEffect(userLevel) { wordViewModel.setUserLevel(userLevel) }
 
-    LaunchedEffect(userLevel) {
-        wordViewModel.setUserLevel(userLevel)
-    }
+    // ── Observe destination changes to refresh learn queue ──
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
-    LaunchedEffect(currentDestination) {
-        if (currentDestination == AppDestinations.LEARN) {
-            if (skipNextLearnRefresh) {
-                skipNextLearnRefresh = false
+    LaunchedEffect(currentRoute) {
+        if (currentRoute == Routes.LEARN) {
+            if (skipNextLearnRefresh.value) {
+                skipNextLearnRefresh.value = false
             } else {
                 wordViewModel.refreshDailyQueueIfIdle()
             }
         }
     }
 
+    // ── Checkpoint auto-offer dialog ──
     if (offerCheckpoint) {
         AlertDialog(
-            onDismissRequest = {
-                wordViewModel.consumeCheckpointOffer()
-            },
+            onDismissRequest = { wordViewModel.consumeCheckpointOffer() },
             title = { Text(stringResource(R.string.checkpoint_offer_title)) },
             text = { Text(stringResource(R.string.checkpoint_offer_message)) },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        wordViewModel.consumeCheckpointOffer()
-                        checkpointAutoStart = true
-                        showCheckpoint = true
-                    },
-                ) {
+                TextButton(onClick = {
+                    wordViewModel.consumeCheckpointOffer()
+                    navController.navigate(Routes.CHECKPOINT)
+                }) {
                     Text(stringResource(R.string.checkpoint_offer_start))
                 }
             },
@@ -275,18 +273,27 @@ fun MinLishTabs(
         )
     }
 
-    val showSetDetail = currentDestination == AppDestinations.VOCABULARY && selectedSetId != null
-    val selectedSetTitle = if (selectedSetId != null) {
-        sets.firstOrNull { it.id == selectedSetId }?.title ?: stringResource(R.string.set_fallback_title)
-    } else {
-        ""
+    // ── Top bar title / back logic ──
+    val isMainRoute = currentRoute in AppDestinations.entries.map { it.route }
+    val showBackButton = currentRoute == Routes.ANALYTICS ||
+        (currentRoute?.startsWith("library/") == true && currentRoute != Routes.LIBRARY)
+    val topBarTitle = when {
+        currentRoute?.startsWith("library/") == true && currentRoute != Routes.LIBRARY -> {
+            val setId = currentRoute.removePrefix("library/").toLongOrNull()
+            sets.firstOrNull { it.id == setId }?.title
+                ?: stringResource(R.string.set_fallback_title)
+        }
+        currentRoute == Routes.ANALYTICS -> stringResource(R.string.analytics_title)
+        else -> currentRoute?.let { route ->
+            AppDestinations.entries.find { it.route == route }?.labelRes
+        }?.let { stringResource(it) }.orEmpty()
     }
 
     NavigationSuiteScaffold(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding() // TrÃ¡nh camera
-            .navigationBarsPadding(), // TrÃ¡nh thanh Ä‘iá»u hÆ°á»›ng dÆ°á»›i
+            .statusBarsPadding()
+            .navigationBarsPadding(),
         navigationSuiteItems = {
             AppDestinations.entries.forEach { destination ->
                 item(
@@ -294,154 +301,200 @@ fun MinLishTabs(
                         Icon(
                             imageVector = destination.icon,
                             contentDescription = stringResource(destination.labelRes),
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(24.dp),
                         )
                     },
                     label = { Text(stringResource(destination.labelRes)) },
-                    selected = destination == currentDestination,
+                    selected = currentRoute == destination.route,
                     onClick = {
-                        currentDestination = destination
-                        showAnalytics = false
-                    }
+                        if (currentRoute != destination.route) {
+                            navController.navigate(destination.route) {
+                                popUpTo(Routes.DASHBOARD) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    },
                 )
             }
-        }
+        },
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
-                if (showSetDetail) {
+                // Only show top bar for non-checkpoint routes
+                if (currentRoute != Routes.CHECKPOINT) {
                     CenterAlignedTopAppBar(
                         title = {
                             Text(
-                                text = selectedSetTitle,
+                                text = topBarTitle,
                                 style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
                             )
                         },
                         navigationIcon = {
-                            IconButton(
-                                onClick = { setViewModel.clearSelection() },
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = stringResource(R.string.action_close),
-                                )
+                            if (showBackButton) {
+                                IconButton(onClick = { navController.popBackStack() }) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = stringResource(R.string.action_close),
+                                    )
+                                }
                             }
                         },
-                    )
-                } else if (currentDestination == AppDestinations.DASHBOARD && showAnalytics) {
-                    CenterAlignedTopAppBar(
-                        title = {
-                            Text(
-                                text = stringResource(R.string.analytics_title),
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                        },
-                        navigationIcon = {
-                            IconButton(
-                                onClick = { showAnalytics = false },
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = stringResource(R.string.action_close),
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    CenterAlignedTopAppBar(
-                        title = {
-                            Text(
-                                text = stringResource(currentDestination.labelRes),
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
                     )
                 }
-            }
+            },
         ) { innerPadding ->
-            Box(
+            NavHost(
+                navController = navController,
+                startDestination = initialRoute,
                 modifier = Modifier
                     .padding(innerPadding)
-                    .fillMaxSize()
+                    .fillMaxSize(),
             ) {
-                if (showCheckpoint) {
-                    CheckpointScreen(
-                        viewModel = checkpointViewModel,
-                        autoStart = checkpointAutoStart,
-                        onClose = {
-                            showCheckpoint = false
-                            checkpointAutoStart = false
+                composable(Routes.DASHBOARD) {
+                    DashboardScreen(
+                        viewModel = dashboardViewModel,
+                        onStartLearning = {
+                            navController.navigate(Routes.LEARN) {
+                                popUpTo(Routes.DASHBOARD) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        onStartBonusLearning = {
+                            skipNextLearnRefresh.value = true
+                            wordViewModel.startBonusSession()
+                            navController.navigate(Routes.LEARN) {
+                                popUpTo(Routes.DASHBOARD) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         },
                         onOpenLibrary = {
-                            showCheckpoint = false
-                            checkpointAutoStart = false
-                            currentDestination = AppDestinations.VOCABULARY
+                            navController.navigate(Routes.LIBRARY) {
+                                popUpTo(Routes.DASHBOARD) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         },
+                        onOpenAnalytics = { navController.navigate(Routes.ANALYTICS) },
+                        onOpenCheckpoint = { navController.navigate(Routes.CHECKPOINT) },
                     )
-                } else when (currentDestination) {
-                    AppDestinations.DASHBOARD -> {
-                        if (showAnalytics) {
-                            AnalyticsScreen(uiState = analyticsUiState, showTitle = false)
-                        } else {
-                            DashboardScreen(
-                                viewModel = dashboardViewModel,
-                                onStartLearning = {
-                                    showAnalytics = false
-                                    currentDestination = AppDestinations.LEARN
-                                },
-                                onStartBonusLearning = {
-                                    showAnalytics = false
-                                    skipNextLearnRefresh = true
-                                    wordViewModel.startBonusSession()
-                                    currentDestination = AppDestinations.LEARN
-                                },
-                                onOpenLibrary = {
-                                    showAnalytics = false
-                                    currentDestination = AppDestinations.VOCABULARY
-                                },
-                                onOpenAnalytics = { showAnalytics = true },
-                                onOpenCheckpoint = {
-                                    checkpointAutoStart = false
-                                    showCheckpoint = true
-                                },
-                            )
-                        }
-                    }
-                    AppDestinations.VOCABULARY -> LibraryScreen(
+                }
+
+                composable(Routes.LIBRARY) {
+                    LibraryScreen(
                         setViewModel = setViewModel,
                         profileGoal = profile?.goal.orEmpty(),
                         onGoLearn = {
-                            showAnalytics = false
-                            currentDestination = AppDestinations.LEARN
+                            navController.navigate(Routes.LEARN) {
+                                popUpTo(Routes.DASHBOARD) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        onSetSelected = { setId ->
+                            navController.navigate(Routes.setDetail(setId))
                         },
                     )
-                    AppDestinations.LEARN -> LearnScreen(
+                }
+
+                composable(
+                    route = Routes.SET_DETAIL,
+                    arguments = listOf(navArgument("setId") { type = NavType.LongType }),
+                ) { backStackEntry ->
+                    val setId = backStackEntry.arguments?.getLong("setId") ?: return@composable
+                    LaunchedEffect(setId) { setViewModel.selectSet(setId) }
+                    DisposableEffect(Unit) { onDispose { setViewModel.clearSelection() } }
+
+                    val words by setViewModel.wordsInSelectedSet.collectAsState()
+                    val selectedSet = sets.firstOrNull { it.id == setId } ?: VocabularySet(
+                        id = setId,
+                        title = stringResource(R.string.set_fallback_title),
+                        description = null,
+                        tags = "",
+                        wordCount = 0,
+                        createdAt = 0L,
+                        userId = "",
+                    )
+
+                    SetDetailScreen(
+                        set = selectedSet,
+                        words = words,
+                        viewModel = setViewModel,
+                        onGoLearn = {
+                            navController.navigate(Routes.LEARN) {
+                                popUpTo(Routes.DASHBOARD) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                    )
+                }
+
+                composable(Routes.LEARN) {
+                    LearnScreen(
                         viewModel = wordViewModel,
                         onOpenLibrary = {
-                            showAnalytics = false
-                            currentDestination = AppDestinations.VOCABULARY
+                            navController.navigate(Routes.LIBRARY) {
+                                popUpTo(Routes.DASHBOARD) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         },
                         onGoHome = {
-                            showAnalytics = false
-                            currentDestination = AppDestinations.DASHBOARD
+                            navController.navigate(Routes.DASHBOARD) {
+                                popUpTo(Routes.DASHBOARD) { inclusive = true }
+                                launchSingleTop = true
+                            }
                         },
                         onGoPractice = {
-                            showAnalytics = false
-                            currentDestination = AppDestinations.PRACTICE
+                            navController.navigate(Routes.PRACTICE) {
+                                popUpTo(Routes.DASHBOARD) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         },
                     )
-                    AppDestinations.PRACTICE -> PracticeScreen(
+                }
+
+                composable(Routes.PRACTICE) {
+                    PracticeScreen(
                         viewModel = practiceViewModel,
                         onOpenLibrary = {
-                            showAnalytics = false
-                            currentDestination = AppDestinations.VOCABULARY
+                            navController.navigate(Routes.LIBRARY) {
+                                popUpTo(Routes.DASHBOARD) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         },
                     )
-                    AppDestinations.PROFILE -> ProfileScreen(authViewModel, profileViewModel)
+                }
+
+                composable(Routes.PROFILE) {
+                    ProfileScreen(authViewModel, profileViewModel)
+                }
+
+                composable(Routes.ANALYTICS) {
+                    AnalyticsScreen(uiState = analyticsUiState)
+                }
+
+                composable(Routes.CHECKPOINT) {
+                    CheckpointScreen(
+                        viewModel = checkpointViewModel,
+                        autoStart = true,
+                        onClose = { navController.popBackStack() },
+                        onOpenLibrary = {
+                            navController.popBackStack()
+                            navController.navigate(Routes.LIBRARY) {
+                                popUpTo(Routes.DASHBOARD) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                    )
                 }
             }
         }

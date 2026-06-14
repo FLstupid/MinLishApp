@@ -76,9 +76,11 @@ interface WordDao {
         """
         SELECT * FROM words
         WHERE setId = :setId
-          AND lastReviewed IS NOT NULL
         ORDER BY
-          CASE WHEN repetitions > 0 AND nextReviewDate <= :now THEN 0 ELSE 1 END,
+          CASE WHEN repetitions > 0 AND nextReviewDate <= :now THEN 0
+               WHEN lastReviewed IS NULL THEN 1
+               ELSE 2
+          END,
           nextReviewDate ASC,
           id ASC
         """

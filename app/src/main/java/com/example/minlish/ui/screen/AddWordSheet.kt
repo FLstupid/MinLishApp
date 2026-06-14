@@ -1,25 +1,36 @@
 package com.example.minlish.ui.screen
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.minlish.R
 import kotlinx.coroutines.launch
@@ -48,6 +59,8 @@ fun AddWordSheet(
     var relatedWords by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var validationError by remember { mutableStateOf<String?>(null) }
+    var showOptional by remember { mutableStateOf(false) }
+    var showAdvanced by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -58,9 +71,7 @@ fun AddWordSheet(
     }
 
     ModalBottomSheet(
-        onDismissRequest = {
-            scope.launch { dismissSheet() }
-        },
+        onDismissRequest = { scope.launch { dismissSheet() } },
         sheetState = sheetState,
     ) {
         Column(
@@ -72,27 +83,22 @@ fun AddWordSheet(
                 .imePadding(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(stringResource(R.string.word_add_title))
+            Text(
+                text = stringResource(R.string.word_add_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
 
             validationError?.let { msg ->
-                Text(
-                    text = msg,
-                    color = MaterialTheme.colorScheme.error,
-                )
+                Text(text = msg, color = MaterialTheme.colorScheme.error)
             }
 
+            // ── Required fields ──
             OutlinedTextField(
                 value = word,
                 onValueChange = { word = it },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.field_word)) },
-                singleLine = true,
-            )
-            OutlinedTextField(
-                value = pronunciation,
-                onValueChange = { pronunciation = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.field_pronunciation)) },
                 singleLine = true,
             )
             OutlinedTextField(
@@ -103,46 +109,105 @@ fun AddWordSheet(
                 singleLine = false,
                 minLines = 2,
             )
-            OutlinedTextField(
-                value = descriptionEn,
-                onValueChange = { descriptionEn = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.field_description_en)) },
-                singleLine = false,
-                minLines = 2,
-            )
-            OutlinedTextField(
-                value = example,
-                onValueChange = { example = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.field_example)) },
-                singleLine = false,
-                minLines = 2,
-            )
-            OutlinedTextField(
-                value = collocation,
-                onValueChange = { collocation = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.field_collocation)) },
-                singleLine = false,
-                minLines = 1,
-            )
-            OutlinedTextField(
-                value = relatedWords,
-                onValueChange = { relatedWords = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.field_related_words)) },
-                singleLine = false,
-                minLines = 1,
-            )
-            OutlinedTextField(
-                value = note,
-                onValueChange = { note = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.field_note)) },
-                singleLine = false,
-                minLines = 2,
-            )
+
+            // ── Optional toggle ──
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showOptional = !showOptional },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = stringResource(R.string.word_add_optional),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Icon(
+                    imageVector = if (showOptional) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+
+            AnimatedVisibility(visible = showOptional) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = pronunciation,
+                        onValueChange = { pronunciation = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.field_pronunciation)) },
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = example,
+                        onValueChange = { example = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.field_example)) },
+                        singleLine = false,
+                        minLines = 2,
+                    )
+                    OutlinedTextField(
+                        value = note,
+                        onValueChange = { note = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.field_note)) },
+                        singleLine = false,
+                        minLines = 2,
+                    )
+
+                    // ── Advanced toggle ──
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showAdvanced = !showAdvanced },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.word_add_advanced),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Icon(
+                            imageVector = if (showAdvanced) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    AnimatedVisibility(visible = showAdvanced) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedTextField(
+                                value = descriptionEn,
+                                onValueChange = { descriptionEn = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text(stringResource(R.string.field_description_en)) },
+                                singleLine = false,
+                                minLines = 2,
+                            )
+                            OutlinedTextField(
+                                value = collocation,
+                                onValueChange = { collocation = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text(stringResource(R.string.field_collocation)) },
+                                singleLine = false,
+                                minLines = 1,
+                            )
+                            OutlinedTextField(
+                                value = relatedWords,
+                                onValueChange = { relatedWords = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text(stringResource(R.string.field_related_words)) },
+                                singleLine = false,
+                                minLines = 1,
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
 
             Button(
                 onClick = {

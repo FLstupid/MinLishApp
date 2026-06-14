@@ -403,7 +403,10 @@ private fun Row.cellValue(index: Int): String? {
     val cell = getCell(index) ?: return null
     return when (cell.cellType) {
         org.apache.poi.ss.usermodel.CellType.STRING -> cell.stringCellValue
-        org.apache.poi.ss.usermodel.CellType.NUMERIC -> cell.numericCellValue.toString()
+        org.apache.poi.ss.usermodel.CellType.NUMERIC -> {
+            val num = cell.numericCellValue
+            if (num == num.toLong().toDouble()) num.toLong().toString() else num.toString()
+        }
         org.apache.poi.ss.usermodel.CellType.BOOLEAN -> cell.booleanCellValue.toString()
         else -> cell.toString()
     }

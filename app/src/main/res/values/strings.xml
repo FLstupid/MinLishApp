@@ -109,6 +109,8 @@
 
     <!-- Set detail / words -->
     <string name="word_add_title">Thêm từ mới</string>
+    <string name="word_add_optional">Thêm thông tin (tùy chọn)</string>
+    <string name="word_add_advanced">Thông tin nâng cao</string>
     <string name="field_word">Từ</string>
     <string name="field_pronunciation">Phiên âm</string>
     <string name="field_meaning">Nghĩa</string>

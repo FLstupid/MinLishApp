@@ -63,14 +63,14 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.messaging)
-    
+
     // Auth & Credentials (Modern Google Login)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.play.services.auth)
     implementation(libs.googleid)
     implementation(libs.kotlinx.coroutines.play.services)
-    
+
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
@@ -80,6 +80,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
 
     // Excel (.xlsx) import/export
+    implementation(libs.androidx.navigation.compose)
     implementation("org.apache.poi:poi-ooxml:5.5.1")
 
     testImplementation(libs.junit)
